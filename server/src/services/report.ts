@@ -1,25 +1,12 @@
-import { existsSync } from 'node:fs';
 import PDFDocument from 'pdfkit';
 import type { AuditSnapshot } from './audit-service.js';
+import { registerPdfFonts } from './pdf-fonts.js';
 
 /**
- * Server-side PDF bias report. Rendered with PDFKit (no headless browser), so it
- * works in a slim container and streams deterministically.
+ * Server-side PDF bias report. Rendered with PDFKit (no headless browser) and an
+ * embedded Unicode font, so it works in a slim container, streams
+ * deterministically and keeps Yoruba diacritics intact.
  */
-
-const FONT_CANDIDATES = [
-  process.env.PDF_FONT_PATH,
-  'C:/Windows/Fonts/segoeui.ttf',
-  '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-  '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
-].filter(Boolean) as string[];
-
-const BOLD_CANDIDATES = [
-  process.env.PDF_FONT_BOLD_PATH,
-  'C:/Windows/Fonts/segoeuib.ttf',
-  '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-  '/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf',
-].filter(Boolean) as string[];
 
 const GREEN = '#0b5d3b';
 const GOLD = '#c89b3c';
@@ -29,17 +16,15 @@ const RED = '#a83232';
 
 export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 46, bufferPages: true, info: { Title: 'Ise Bias Audit Report', Author: 'Ise' } });
+    const doc = new PDFDocument({ size: 'A4', margin: 46, bufferPages: true, info: { Title: 'Iṣẹ́ Bias Audit Report', Author: 'Iṣẹ́' } });
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const bodyFont = FONT_CANDIDATES.find((p) => existsSync(p));
-    const boldFont = BOLD_CANDIDATES.find((p) => existsSync(p));
-    if (bodyFont) doc.registerFont('Body', bodyFont);
-    if (boldFont) doc.registerFont('Bold', boldFont);
-    const hasFonts = Boolean(bodyFont);
+    // Registers the bundled DejaVu Sans pair so ṣ/ẹ (and every other Latin
+    // Extended Additional glyph) render instead of disappearing.
+    const hasFonts = registerPdfFonts(doc);
     const brand = hasFonts ? 'Iṣẹ́' : 'Ise';
     const setBody = (size = 10) => {
       if (hasFonts) doc.font('Body');
@@ -47,7 +32,7 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
       return doc;
     };
     const setBold = (size = 10) => {
-      if (hasFonts && boldFont) doc.font('Bold');
+      if (hasFonts) doc.font('Bold');
       else doc.font('Helvetica-Bold');
       doc.fontSize(size).fillColor(INK);
       return doc;
@@ -58,7 +43,7 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
 
     // Cover header
     doc.rect(0, 0, doc.page.width, 96).fill(GREEN);
-    doc.font(hasFonts && boldFont ? 'Bold' : 'Helvetica-Bold').fontSize(24);
+    doc.font(hasFonts ? 'Bold' : 'Helvetica-Bold').fontSize(24);
     doc.fillColor('#ffffff').text(brand, 46, 30);
     doc.fontSize(10).fillColor('#d9e8df');
     doc.text('Bias audit report — AI-assisted graduate screening', 46, 64);

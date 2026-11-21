@@ -16,3 +16,4 @@ client/dist/
 .cloud-attachments/
 npm-install.log
 screenshot-*.png
+pdf-*.png

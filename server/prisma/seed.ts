@@ -17,6 +17,7 @@ import { parseCvHeuristically } from '../src/services/cv-parser.js';
 import { evaluateCv } from '../src/services/pipeline.js';
 import { recommendationForScore } from '../src/domain/scoring.js';
 import { buildAuditSnapshot } from '../src/services/audit-service.js';
+import { registerPdfFonts } from '../src/services/pdf-fonts.js';
 
 const prisma = new PrismaClient();
 
@@ -252,7 +253,8 @@ function pdfFromText(text: string): Promise<Buffer> {
     doc.on('data', (c: Buffer) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
-    doc.font('Helvetica');
+    const hasFonts = registerPdfFonts(doc);
+    doc.font(hasFonts ? 'Body' : 'Helvetica');
     text.split('\n').forEach((line) => {
       doc.fontSize(line === line.toUpperCase() && line.length < 30 ? 12 : 10).text(line, { lineGap: 2 });
     });

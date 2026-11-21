@@ -13,6 +13,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:dist": "node dist/prisma/seed.js",
     "db:embedded": "tsx scripts/embedded-db.ts",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"

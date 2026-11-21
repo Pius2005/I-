@@ -4,6 +4,8 @@ import { buildBlindView, redactCvData, redactText, stripIdentityForScoring } fro
 import { adverseImpact, selectionRates, twoProportionPValue, proxyBias } from '../domain/audit.js';
 import { buildIcs, generateSlots } from '../domain/ics.js';
 import { evaluateKnockouts } from '../services/knockouts.js';
+import PDFDocument from 'pdfkit';
+import { registerPdfFonts, resolvePdfFonts } from '../services/pdf-fonts.js';
 import type { CriterionInput, ParsedCVData } from '../domain/types.js';
 
 const cv: ParsedCVData = {
@@ -291,5 +293,29 @@ describe('knockout questions', () => {
     );
     expect(outcome.passed).toBe(false);
     expect(outcome.flags[0].reason).toContain('below');
+  });
+});
+describe('PDF fonts', () => {
+  it('resolves the bundled Unicode fonts', () => {
+    const fonts = resolvePdfFonts();
+    expect(fonts).not.toBeNull();
+    expect(fonts!.body).toContain('assets');
+    expect(fonts!.body.endsWith('DejaVuSans.ttf')).toBe(true);
+    expect(fonts!.bold.endsWith('DejaVuSans-Bold.ttf')).toBe(true);
+  });
+
+  it('maps Yoruba sub-dot glyphs so ṣ and ẹ are embedded, not dropped', async () => {
+    const doc = new PDFDocument({ size: 'A4', compress: false });
+    const chunks: Buffer[] = [];
+    doc.on('data', (c: Buffer) => chunks.push(c));
+    const done = new Promise<Buffer>((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));
+    expect(registerPdfFonts(doc)).toBe(true);
+    doc.font('Body').fontSize(12).text('Iṣẹ́ ẹ ṣ');
+    doc.font('Bold').text('Iṣẹ́');
+    doc.end();
+    const pdf = (await done).toString('latin1');
+    expect(pdf).toContain('DejaVuSans');
+    expect(pdf).toMatch(/<1e63>/i);
+    expect(pdf).toMatch(/<1eb9>/i);
   });
 });

@@ -31,6 +31,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/server/package.json ./server/package.json
 COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/server/prisma ./server/prisma
+COPY --from=build /app/server/assets ./server/assets
 COPY --from=build /app/client/dist ./client/dist
 
 RUN mkdir -p /app/server/uploads && chown -R ise:ise /app

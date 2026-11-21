@@ -59,10 +59,12 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 
 docker compose up --build -d
 docker compose exec api npx prisma migrate deploy --schema prisma/schema.prisma
-docker compose exec api npm run db:seed --workspace @ise/server
+# Demo data: the image ships the compiled seed, and the seed refuses to run
+# under NODE_ENV=production, so pass development for this one command.
+docker compose exec -e NODE_ENV=development api npm run db:seed:dist --workspace @ise/server
 ```
 
-Open <http://localhost:4000>. The API applies migrations on boot; seeding is a one-off command because the seed creates demo organisations, jobs and applications.
+Open <http://localhost:4000>. The API applies migrations on boot; seeding is a one-off command because the seed creates demo organisations, jobs and applications. The production image contains compiled JavaScript only, so use `db:seed:dist` there and `db:seed` (tsx, TypeScript sources) for local development.
 
 The compose file runs three services:
 
@@ -323,5 +325,5 @@ The end-to-end suite needs a migrated, seeded database. Tests never send real em
 - Single-tenant per organisation deployment; cross-organisation data is isolated by `organisationId` checks, not by separate databases.
 - The in-process scheduler and queue are appropriate for a single API instance. For multiple replicas, set `REDIS_URL` so queued CV work is shared, and run only one reminder sweep.
 - Google Calendar sync requires OAuth credentials and is optional; ICS files work without it.
-- The PDF audit report uses PDFKit's built-in Helvetica, which does not render Yoruba/Igbo diacritics such as `ṣ` in the report body. Use the web dashboard for full-fidelity text; embedding a Unicode TTF removes this limitation.
+- PDFs (bias audit reports and seeded demo CVs) render through the DejaVu Sans pair bundled at `server/assets/fonts`, so `ṣ`/`ẹ` and other diacritics are embedded rather than dropped. Override the font with `PDF_FONT_PATH`/`PDF_FONT_BOLD_PATH` if you need a different typeface.
 - S3 storage, SMTP/Resend email, Termii SMS and an external LLM are implemented but untested against live provider accounts in this repository.

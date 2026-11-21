@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Iṣẹ́ — AI CV screening with bias audit for Nigerian graduate hiring",
+  "engines": { "node": "22.x" },
   "workspaces": [
     "server",
     "client"
@@ -10,6 +11,7 @@
   "scripts": {
     "dev": "concurrently -n api,web -c green,yellow \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w server && npm run build -w client",
+    "build:vercel": "prisma generate --schema server/prisma/schema.prisma && npm run build -w server && npm run build -w client",
     "start": "npm run start -w server",
     "db:generate": "npm run db:generate -w server",
     "db:migrate": "npm run db:migrate -w server",

@@ -9,6 +9,7 @@ import { env, corsOrigins, isProd } from './env.js';
 import { ApiError, toErrorBody } from './lib/errors.js';
 import { requestId } from './lib/logger.js';
 import { apiLimiter, heavyLimiter, uploadLimiter } from './middleware/rateLimit.js';
+import { MAX_CV_BYTES } from './services/extraction.js';
 
 import authRoutes from './routes/auth.js';
 import publicRoutes from './routes/public.js';
@@ -125,7 +126,8 @@ export function createApp() {
     const { status, body } = toErrorBody(err, req.requestId);
 
     if (err instanceof multer.MulterError) {
-      const message = err.code === 'LIMIT_FILE_SIZE' ? 'Your CV must be 5 MB or smaller.' : 'That upload could not be accepted.';
+      const message =
+        err.code === 'LIMIT_FILE_SIZE' ? `Your CV must be ${Math.floor(MAX_CV_BYTES / (1024 * 1024))} MB or smaller.` : 'That upload could not be accepted.';
       return res.status(400).json({ error: { code: err.code, message, requestId: req.requestId } });
     }
     if (!(err instanceof ApiError) && status >= 500) {

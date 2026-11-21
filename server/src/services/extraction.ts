@@ -8,7 +8,9 @@ const require = createRequire(import.meta.url);
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buf: Buffer) => Promise<{ text: string; numpages: number }>;
 
-export const MAX_CV_BYTES = 5 * 1024 * 1024;
+// Vercel caps request bodies at 4.5 MB, so the limit sits just under it and the
+// API can answer with a clear message instead of a platform 413.
+export const MAX_CV_BYTES = 4 * 1024 * 1024;
 export const ALLOWED_CV_MIME = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

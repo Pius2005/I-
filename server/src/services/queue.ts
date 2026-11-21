@@ -35,6 +35,12 @@ export async function enqueue(name: JobName, payload: Record<string, unknown>) {
       await queue.add(name, payload);
       return;
     }
+    // Serverless runtimes freeze the instance once the response is sent, so a
+    // deferred job would be lost. There we await the work inside the request.
+    if (process.env.VERCEL) {
+      await runInline(name, payload);
+      return;
+    }
     setImmediate(() => {
       runInline(name, payload).catch((error) =>
         logger.error('queue.inline_failed', { name, message: (error as Error).message }),

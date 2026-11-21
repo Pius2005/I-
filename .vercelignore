@@ -1,0 +1,19 @@
+# Never ship local configuration or data to Vercel.
+.env
+.env.*
+!.env.example
+.logs
+*.log
+server/uploads
+server/.pgdata
+server/.report-tmp
+node_modules
+**/node_modules
+client/dist
+.git
+.freebuff
+.cloud-attachments
+screenshot-*.png
+pdf-*.png
+audit-*.png
+npm-install.log

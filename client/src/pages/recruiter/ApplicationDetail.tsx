@@ -309,7 +309,7 @@ export default function RecruiterApplicationDetail() {
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-stone-200">
                       <div
-                        className={item.score >= 0.8 ? 'h-full rounded-full bg-forest-600' : item.score >= 0.5 ? 'h-full rounded-full bg-gold-500' : 'h-full rounded-full bg-amber-700'}
+                        className={item.score >= 0.8 ? 'h-full rounded-full bg-forest-600' : item.score >= 0.5 ? 'h-full rounded-full bg-gold-500' : 'h-full rounded-full bg-stone-400'}
                         style={{ width: `${Math.max(2, item.score * 100)}%` }}
                       />
                     </div>
@@ -438,7 +438,7 @@ export default function RecruiterApplicationDetail() {
                   </div>
                 ))}
                 {data.knockoutFlags.map((flag, index) => (
-                  <div key={`flag-${index}`} className="px-5 py-3 text-xs text-amber-900">
+                  <div key={`flag-${index}`} className="px-5 py-3 text-xs text-ink">
                     {flag.reason}
                   </div>
                 ))}
@@ -528,7 +528,7 @@ export default function RecruiterApplicationDetail() {
                               <td className="py-2">{result.label}</td>
                               <td className="py-2 text-xs text-muted">{Object.entries(result.identity).map(([k, v]) => `${k}: ${v}`).join(' · ')}</td>
                               <td className="py-2 text-right tabular-nums">{result.total}</td>
-                              <td className={`py-2 text-right tabular-nums ${result.delta > 0 ? 'text-forest-700' : result.delta < 0 ? 'text-red-700' : 'text-muted'}`}>
+                              <td className={`py-2 text-right tabular-nums ${result.delta > 0 ? 'text-forest-700' : result.delta < 0 ? 'text-ink' : 'text-muted'}`}>
                                 {result.delta > 0 ? '+' : ''}
                                 {result.delta}
                               </td>
@@ -561,8 +561,8 @@ export default function RecruiterApplicationDetail() {
                 <p className="text-xs text-muted">Contact details stay hidden while blind screening is on.</p>
               )}
               <p className="text-xs text-muted">Reference {data.anonymousRef}</p>
-              {data.rejectionReason && <p className="text-xs text-red-700">Rejection reason: {data.rejectionReason}</p>}
-              {data.overrideReason && <p className="text-xs text-amber-800">Override reason: {data.overrideReason}</p>}
+              {data.rejectionReason && <p className="text-xs text-ink">Rejection reason: {data.rejectionReason}</p>}
+              {data.overrideReason && <p className="text-xs text-stone-700">Override reason: {data.overrideReason}</p>}
             </div>
           </Card>
 

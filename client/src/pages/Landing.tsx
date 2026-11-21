@@ -90,9 +90,9 @@ export default function Landing() {
               <Badge tone="warn">2 flags</Badge>
             </div>
             <div className="mt-4 space-y-3 text-sm">
-              <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                <Scale className="mt-0.5 h-4 w-4 shrink-0 text-amber-800" aria-hidden="true" />
-                <p className="text-amber-950">
+              <div className="flex items-start gap-3 rounded-xl border border-stone-300 bg-stone-100 p-3">
+                <Scale className="mt-0.5 h-4 w-4 shrink-0 text-stone-700" aria-hidden="true" />
+                <p className="text-ink">
                   <strong>Selection rate:</strong> polytechnic graduates advanced at 62% of the highest group’s rate — below the
                   four-fifths threshold.
                 </p>

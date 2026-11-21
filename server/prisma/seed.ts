@@ -30,8 +30,9 @@ if (process.env.NODE_ENV === 'production') {
 // ---------------------------------------------------------------------------
 // Synthetic data pools
 // ---------------------------------------------------------------------------
-const YORUBA_M = ['Adebayo', 'Oluwaseun', 'Tunde', 'Femi', 'Kayode', 'Gbenga', 'Segun', 'Wale'];
-const YORUBA_F = ['Aderonke', 'Titilayo', 'Bisola', 'Funke', 'Yetunde', 'Kemi', 'Modupe', 'Sade'];
+// Yoruba names are written with their tone marks, as they are in real use.
+const YORUBA_M = ['Adébáyọ̀', 'Ṣẹ́gun', 'Babátúndé', 'Olúwásẹ́gun', 'Káyọ̀dé', 'Gbẹ́nga', 'Olúfẹ́mi', 'Adéwálé'];
+const YORUBA_F = ['Ṣadé', 'Títíláyọ̀', 'Adérọ̀nkẹ́', 'Fúnkẹ́', 'Yẹ̀túndé', 'Kẹ́mí', 'Bísọlá', 'Mọ́dúpẹ́'];
 const IGBO_M = ['Chinedu', 'Emeka', 'Obinna', 'Ifeanyi', 'Uchenna', 'Tochukwu', 'Nnamdi', 'Chukwudi'];
 const IGBO_F = ['Ngozi', 'Chiamaka', 'Adaeze', 'Ijeoma', 'Nneka', 'Chidinma', 'Amarachi', 'Oluchi'];
 const HAUSA_M = ['Ibrahim', 'Musa', 'Abdulrahman', 'Sani', 'Yusuf', 'Bello', 'Nasiru', 'Suleiman'];

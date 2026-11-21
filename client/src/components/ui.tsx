@@ -19,7 +19,7 @@ const buttonStyles: Record<ButtonVariant, string> = {
   primary: 'bg-forest-600 text-white hover:bg-forest-700 border border-transparent shadow-sm',
   secondary: 'bg-white text-forest-800 hover:bg-forest-50 border border-line',
   ghost: 'bg-transparent text-ink/80 hover:bg-forest-50 border border-transparent',
-  danger: 'bg-red-700 text-white hover:bg-red-800 border border-transparent',
+  danger: 'bg-white text-ink hover:bg-ink hover:text-white border border-ink font-semibold',
   gold: 'bg-forest-600 text-white hover:bg-forest-700 border border-transparent font-semibold',
 };
 
@@ -79,8 +79,8 @@ const toneStyles: Record<Tone, string> = {
   neutral: 'bg-stone-100 text-stone-700 border-stone-200',
   info: 'bg-forest-50 text-forest-700 border-forest-200',
   good: 'bg-zinc-100 text-zinc-900 border-zinc-300 font-medium',
-  warn: 'bg-amber-50 text-amber-900 border-amber-200',
-  bad: 'bg-red-50 text-red-800 border-red-200',
+  warn: 'bg-stone-100 text-stone-900 border-stone-400 font-medium',
+  bad: 'bg-ink text-white border-ink font-medium',
 };
 
 export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
@@ -147,7 +147,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
 export function FormError({ children }: { children?: ReactNode }) {
   if (!children) return null;
   return (
-    <p className="mt-1.5 text-xs font-medium text-red-700" role="alert">
+    <p className="mt-1.5 text-xs font-semibold text-ink" role="alert">
       {children}
     </p>
   );
@@ -256,8 +256,8 @@ export function Alert({
     neutral: 'border-stone-200 bg-stone-50 text-stone-800',
     info: 'border-forest-200 bg-forest-50 text-forest-900',
     good: 'border-zinc-300 bg-zinc-100 text-zinc-900',
-    warn: 'border-amber-200 bg-amber-50 text-amber-950',
-    bad: 'border-red-200 bg-red-50 text-red-900',
+    warn: 'border-stone-300 border-l-4 border-l-stone-900 bg-stone-50 text-stone-900',
+    bad: 'border-stone-300 border-l-4 border-l-ink bg-white text-ink',
   };
   return (
     <div className={cn('flex gap-3 rounded-xl border p-4 text-sm', styles[tone], className)} role={tone === 'bad' ? 'alert' : 'status'}>
@@ -312,12 +312,12 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   const message =
     error instanceof Error ? error.message : typeof error === 'string' ? error : 'We could not load this. Please try again.';
   return (
-    <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+    <div className="rounded-2xl border border-stone-300 bg-stone-50 p-5">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-700" aria-hidden="true" />
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ink" aria-hidden="true" />
         <div className="flex-1">
-          <p className="font-semibold text-red-900">Something went wrong</p>
-          <p className="mt-1 text-sm text-red-800">{message}</p>
+          <p className="font-semibold text-ink">Something went wrong</p>
+          <p className="mt-1 text-sm text-ink/80">{message}</p>
           {onRetry && (
             <Button variant="secondary" size="sm" className="mt-3" onClick={onRetry}>
               Try again
@@ -494,11 +494,11 @@ export function ScoreRing({ score, size = 84 }: { score: number | null | undefin
   const radius = (size - 10) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (value / 100) * circumference;
-  const color = score === null || score === undefined ? '#a8b3ac' : value >= 70 ? '#0b5d3b' : value >= 50 ? '#c89b3c' : '#b45309';
+  const color = score === null || score === undefined ? '#d4d4d8' : value >= 70 ? '#09090b' : value >= 50 ? '#a1a1aa' : '#a1a1aa';
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#eee9dc" strokeWidth={8} />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#e4e4e7" strokeWidth={8} />
         <circle
           cx={size / 2}
           cy={size / 2}

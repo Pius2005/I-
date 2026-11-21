@@ -8,11 +8,14 @@ import { registerPdfFonts } from './pdf-fonts.js';
  * deterministically and keeps Yoruba diacritics intact.
  */
 
-const GREEN = '#0b5d3b';
-const GOLD = '#c89b3c';
-const INK = '#16251d';
-const MUTED = '#5f6f66';
-const RED = '#a83232';
+// The report is deliberately monochrome (black, white, greys) so it matches the
+// product's black-and-white interface, prints cleanly on any office printer and
+// never relies on colour alone to signal a flagged finding.
+const BLACK = '#000000';
+const INK = '#111111';
+const MUTED = '#525252';
+const RULE = '#d4d4d4';
+const SOFT = '#f4f4f5';
 
 export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -42,10 +45,10 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
     let y = 46;
 
     // Cover header
-    doc.rect(0, 0, doc.page.width, 96).fill(GREEN);
+    doc.rect(0, 0, doc.page.width, 96).fill(BLACK);
     doc.font(hasFonts ? 'Bold' : 'Helvetica-Bold').fontSize(24);
     doc.fillColor('#ffffff').text(brand, 46, 30);
-    doc.fontSize(10).fillColor('#d9e8df');
+    doc.fontSize(10).fillColor('#e5e5e5');
     doc.text('Bias audit report — AI-assisted graduate screening', 46, 64);
     y = 118;
 
@@ -66,9 +69,9 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
         doc.addPage();
         y = 46;
       }
-      setBold(12).fillColor(GREEN).text(title, 46, y);
+      setBold(12).fillColor(BLACK).text(title, 46, y);
       y += 18;
-      doc.moveTo(46, y - 5).lineTo(46 + width, y - 5).strokeColor('#e3e0d3').lineWidth(1).stroke();
+      doc.moveTo(46, y - 5).lineTo(46 + width, y - 5).strokeColor(RULE).lineWidth(1).stroke();
     };
 
     const paragraph = (text: string, color = INK, size = 9.5) => {
@@ -89,7 +92,7 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
         doc.addPage();
         y = 46;
       }
-      doc.circle(49, y + 5, 1.8).fill(GOLD);
+      doc.circle(49, y + 5, 1.8).fill(INK);
       doc.text(text, 58, y, { width: width - 12 });
       y += height + 6;
     };
@@ -98,7 +101,7 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
       setBold(8.5).fillColor(MUTED);
       for (const col of columns) doc.text(col.label.toUpperCase(), col.x, y, { width: col.width });
       y += 13;
-      doc.moveTo(46, y - 4).lineTo(46 + width, y - 4).strokeColor('#e3e0d3').stroke();
+      doc.moveTo(46, y - 4).lineTo(46 + width, y - 4).strokeColor(RULE).stroke();
     };
 
     const tableRow = (cells: { text: string; x: number; width: number; color?: string; bold?: boolean }[]) => {
@@ -124,7 +127,7 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
     if (snapshot.flags.length) {
       sectionTitle(`Flagged issues (${snapshot.flags.length})`);
       for (const flag of snapshot.flags) {
-        const color = flag.severity === 'severe' || flag.severity === 'high' ? RED : GOLD;
+        const color = flag.severity === 'severe' || flag.severity === 'high' ? BLACK : MUTED;
         setBold(9).fillColor(color).text(`${flag.code.replace(/-/g, ' ')} · ${flag.severity}`, 46, y);
         y += 13;
         paragraph(flag.message, INK, 9);
@@ -159,7 +162,7 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
               text: suppressed ? 'Below privacy threshold' : g.flagged ? `Flagged (${g.severity})` : 'OK',
               x: 430,
               width: width - 384,
-              color: g.flagged ? RED : suppressed ? MUTED : GREEN,
+              color: g.flagged ? BLACK : MUTED,
             },
           ]);
         }
@@ -180,7 +183,7 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
           { text: p.proxy, x: 52, width: 120, bold: true },
           { text: p.correlationWithScore.toFixed(2), x: 180, width: 80 },
           { text: `${p.correlationWithGroup.toFixed(2)}${p.strongestGroup ? ` (${p.strongestGroup})` : ''}`, x: 268, width: 90 },
-          { text: p.flagged ? 'Possible proxy' : 'No material signal', x: 366, width: width - 320, color: p.flagged ? RED : GREEN },
+          { text: p.flagged ? 'Possible proxy' : 'No material signal', x: 366, width: width - 320, color: p.flagged ? BLACK : MUTED },
         ]);
       }
       paragraph('Correlations describe association, not causation. A flagged proxy means the feature should be investigated and, if not job-related, removed from scoring.', MUTED, 8.5);
@@ -208,7 +211,7 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
           { text: String(g.total), x: 200, width: 50 },
           { text: `${g.favourableOverrides} (${Math.round(g.favourableRate * 100)}%)`, x: 256, width: 110 },
           { text: `${g.disfavourableOverrides} (${Math.round(g.disfavourableRate * 100)}%)`, x: 372, width: 110 },
-          { text: g.flagged ? 'Review' : 'Typical', x: 486, width: width - 440, color: g.flagged ? RED : GREEN },
+          { text: g.flagged ? 'Review' : 'Typical', x: 486, width: width - 440, color: g.flagged ? BLACK : MUTED },
         ]);
       }
       paragraph(`AI/human agreement rate: ${Math.round(override.aiAgreementRate * 100)}%. ${override.note}`, MUTED, 8.5);
@@ -224,17 +227,24 @@ export function buildBiasReportPdf(snapshot: AuditSnapshot): Promise<Buffer> {
     sectionTitle('Methodology');
     for (const note of snapshot.methodology) bullet(note);
     if (snapshot.sampleWarnings.length) {
-      setBold(9).fillColor(GOLD).text('Sample-size warnings and limitations');
+      setBold(9).fillColor(BLACK).text('Sample-size warnings and limitations');
       y += 14;
       for (const warning of snapshot.sampleWarnings) bullet(warning);
     }
 
     sectionTitle('Important disclaimer');
-    paragraph(
-      'Statistical flags in this report indicate possible bias and require human investigation. They are not legal findings of discrimination, and they do not prove that any individual decision was unfair. This report must be read alongside the documented decision reasons and reviewed by a qualified person.',
-      RED,
-      9,
-    );
+    const disclaimer =
+      'Statistical flags in this report indicate possible bias and require human investigation. They are not legal findings of discrimination, and they do not prove that any individual decision was unfair. This report must be read alongside the documented decision reasons and reviewed by a qualified person.';
+    setBody(9).fillColor(BLACK);
+    const disclaimerHeight = doc.heightOfString(disclaimer, { width: width - 20 }) + 16;
+    if (y + disclaimerHeight > doc.page.height - 70) {
+      doc.addPage();
+      y = 46;
+    }
+    doc.rect(46, y - 6, width, disclaimerHeight).fill(SOFT);
+    doc.rect(46, y - 6, 3, disclaimerHeight).fill(BLACK);
+    doc.fillColor(BLACK).text(disclaimer, 58, y, { width: width - 24 });
+    y += disclaimerHeight + 6;
     paragraph(
       'AI screening only recommends candidates. A human recruiter always makes the final decision. Iṣẹ́ does not automatically reject anyone on the basis of an AI score.',
       MUTED,

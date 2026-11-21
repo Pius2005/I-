@@ -135,15 +135,15 @@ export default function RecruiterDashboard() {
           <div className="h-64 px-3 py-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.scoreDistribution} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eee9dc" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" vertical={false} />
                 <XAxis dataKey="bucket" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval={1} />
                 <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{ borderRadius: 12, borderColor: '#e2ddcd', fontSize: 12 }}
+                  contentStyle={{ borderRadius: 12, borderColor: '#e4e4e7', fontSize: 12 }}
                   formatter={(value) => [`${value} candidate(s)`, 'Applications']}
                   labelFormatter={(label) => `Score ${label}`}
                 />
-                <Bar dataKey="count" fill="#0b5d3b" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" fill="#09090b" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -199,7 +199,7 @@ export default function RecruiterDashboard() {
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-stone-200">
                       <div
-                        className={stage === 'REJECTED' ? 'h-full rounded-full bg-red-400' : 'h-full rounded-full bg-forest-600'}
+                        className={stage === 'REJECTED' ? 'h-full rounded-full bg-stone-400' : 'h-full rounded-full bg-forest-600'}
                         style={{ width: `${width}%` }}
                       />
                     </div>

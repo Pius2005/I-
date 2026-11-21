@@ -325,7 +325,7 @@ export function JobAuditPage() {
       {snapshot.sampleWarnings.length > 0 && (
         <div className="mb-5 space-y-2">
           {snapshot.sampleWarnings.map((warning, index) => (
-            <p key={index} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+            <p key={index} className="rounded-lg border border-stone-300 bg-stone-100 px-3 py-2 text-xs text-ink">
               {warning}
             </p>
           ))}
@@ -351,7 +351,7 @@ export function JobAuditPage() {
         <div className="mt-4 grid gap-5 px-5 pb-5 xl:grid-cols-[1fr,1fr]">
           <div>
             {dimensionData?.analysis.summary && (
-              <p className={`mb-3 rounded-lg px-3 py-2 text-xs ${dimensionData.analysis.flagged ? 'bg-amber-50 text-amber-950' : 'bg-forest-50 text-forest-900'}`}>
+              <p className={`mb-3 rounded-lg px-3 py-2 text-xs ${dimensionData.analysis.flagged ? 'bg-stone-100 text-ink' : 'bg-forest-50 text-forest-900'}`}>
                 {dimensionData.analysis.summary}
               </p>
             )}
@@ -368,11 +368,11 @@ export function JobAuditPage() {
                 </thead>
                 <tbody className="divide-y divide-line">
                   {(dimensionData?.analysis.groups ?? []).map((group) => (
-                    <tr key={group.group} className={group.flagged ? 'bg-red-50/60' : undefined}>
+                    <tr key={group.group} className={group.flagged ? 'bg-stone-100/70' : undefined}>
                       <td className="py-2">
                         <span className="flex items-center gap-1.5">
                           {group.group}
-                          {group.flagged && <AlertTriangle className="h-3.5 w-3.5 text-red-600" aria-label="Flagged" />}
+                          {group.flagged && <AlertTriangle className="h-3.5 w-3.5 text-ink" aria-label="Flagged" />}
                         </span>
                       </td>
                       <td className="py-2 text-right tabular-nums">{group.total}</td>
@@ -397,16 +397,16 @@ export function JobAuditPage() {
             {chartData.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eee9dc" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} unit="%" domain={[0, 100]} />
                   <Tooltip
-                    contentStyle={{ borderRadius: 12, borderColor: '#e2ddcd', fontSize: 12 }}
+                    contentStyle={{ borderRadius: 12, borderColor: '#e4e4e7', fontSize: 12 }}
                     formatter={(value, _name, item) => [`${value}%`, `${(item.payload as { total: number }).total} in group`]}
                   />
                   <Bar dataKey="rate" radius={[4, 4, 0, 0]}>
                     {chartData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.name === dimensionData?.analysis.highestGroup ? '#0b5d3b' : '#c89b3c'} />
+                      <Cell key={entry.name} fill={entry.name === dimensionData?.analysis.highestGroup ? '#09090b' : '#a1a1aa'} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -442,7 +442,7 @@ export function JobAuditPage() {
                   </tr>
                 )}
                 {snapshot.proxyFindings.map((finding) => (
-                  <tr key={finding.proxy} className={finding.flagged ? 'bg-red-50/60' : undefined}>
+                  <tr key={finding.proxy} className={finding.flagged ? 'bg-stone-100/70' : undefined}>
                     <td className="py-2">{finding.proxy}</td>
                     <td className="py-2 text-right tabular-nums">{finding.correlationWithScore}</td>
                     <td className="py-2 text-right tabular-nums">{finding.correlationWithGroup}</td>
@@ -468,7 +468,7 @@ export function JobAuditPage() {
                 <div className="mt-2 space-y-1">
                   {dimensionEntry.groups.slice(0, 5).map((group) => (
                     <div key={group.group} className="flex items-center justify-between text-xs">
-                      <span className={group.flagged ? 'font-semibold text-red-800' : 'text-ink/80'}>{group.group}</span>
+                      <span className={group.flagged ? 'font-semibold text-ink' : 'text-ink/80'}>{group.group}</span>
                       <span className="text-muted">
                         +{group.favourableOverrides} favourable · −{group.disfavourableOverrides} disfavourable
                       </span>
@@ -517,7 +517,7 @@ export function JobAuditPage() {
               <li key={index}>{entry}</li>
             ))}
           </ul>
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-950">
+          <div className="mt-4 rounded-xl border border-stone-300 bg-stone-100 p-4 text-xs leading-relaxed text-ink">
             Statistical anomalies are not legal findings of discrimination. Self-declaration is voluntary and can itself bias the comparison.
             Review flagged stages with the hiring panel and a qualified adviser before acting. Generated {formatDateTime(snapshot.generatedAt)}.
           </div>

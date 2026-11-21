@@ -324,7 +324,7 @@ export function JobDetailPage() {
                   }}
                 />
               </label>
-              {fileError && <p className="mt-1.5 text-xs font-medium text-red-700">{fileError}</p>}
+              {fileError && <p className="mt-1.5 text-xs font-medium text-ink">{fileError}</p>}
             </div>
 
             <Field label="Cover letter" htmlFor="coverLetter" hint="optional">

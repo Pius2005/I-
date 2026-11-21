@@ -232,7 +232,7 @@ export function RegisterPage() {
             {...form.register('acceptedAiNotice')}
           />
           {form.formState.errors.acceptedAiNotice && (
-            <p className="mt-1.5 text-xs font-medium text-red-700" role="alert">
+            <p className="mt-1.5 text-xs font-medium text-ink" role="alert">
               You must accept the AI-use notice to continue.
             </p>
           )}

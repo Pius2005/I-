@@ -647,11 +647,11 @@ export function CandidateApplicationDetailPage() {
           </Card>
 
           {application.stage === 'REJECTED' && (
-            <Card className="border-red-200 bg-red-50 p-5">
-              <AlertTriangle className="h-5 w-5 text-red-700" aria-hidden="true" />
-              <p className="mt-2 text-sm font-semibold text-red-900">Outcome recorded</p>
-              {application.rejectionReason && <p className="mt-1 text-sm text-red-900/90">{application.rejectionReason}</p>}
-              <p className="mt-2 text-xs text-red-900/70">You can still request human review of this decision.</p>
+            <Card className="border-stone-300 bg-stone-100 p-5">
+              <AlertTriangle className="h-5 w-5 text-ink" aria-hidden="true" />
+              <p className="mt-2 text-sm font-semibold text-ink">Outcome recorded</p>
+              {application.rejectionReason && <p className="mt-1 text-sm text-ink/90">{application.rejectionReason}</p>}
+              <p className="mt-2 text-xs text-muted">You can still request human review of this decision.</p>
             </Card>
           )}
 

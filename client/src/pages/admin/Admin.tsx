@@ -113,7 +113,7 @@ export function AdminDashboard() {
               ))}
             </div>
           </Card>
-          <Card className="border-amber-200 bg-amber-50 p-5 text-xs leading-relaxed text-amber-950">
+          <Card className="border-stone-300 bg-stone-100 p-5 text-xs leading-relaxed text-ink">
             <ShieldCheck className="h-5 w-5" aria-hidden="true" />
             <p className="mt-2 text-sm font-semibold">NDPA 2023 obligations</p>
             <p className="mt-1">

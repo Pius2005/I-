@@ -122,10 +122,10 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
-      <Card className="mt-8 border-amber-200 bg-amber-50 p-5">
+      <Card className="mt-8 border-stone-300 bg-stone-100 p-5">
         <div className="flex gap-3">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
-          <p className="text-sm leading-relaxed text-amber-950">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ink" aria-hidden="true" />
+          <p className="text-sm leading-relaxed text-ink">
             <strong>Important:</strong> this notice describes how the software is designed. Legal compliance with the NDPA 2023
             (including lawful basis, cross-border transfer mechanisms and retention policy) must be reviewed by a qualified
             Nigerian data-protection professional before production use. The repository includes this same caveat.

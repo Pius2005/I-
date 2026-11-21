@@ -2,7 +2,7 @@ import { createReadStream } from 'node:fs';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { env } from '../env.js';
+import { env, s3Bucket } from '../env.js';
 
 export interface StorageDriver {
   put(key: string, body: Buffer, contentType: string): Promise<void>;
@@ -39,42 +39,63 @@ class LocalStorage implements StorageDriver {
 }
 
 class S3Storage implements StorageDriver {
-  private client = new S3Client({
-    region: env.S3_REGION || 'us-east-1',
-    endpoint: env.S3_ENDPOINT || undefined,
-    forcePathStyle: env.S3_FORCE_PATH_STYLE,
-    credentials:
-      env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY
-        ? { accessKeyId: env.S3_ACCESS_KEY_ID, secretAccessKey: env.S3_SECRET_ACCESS_KEY }
-        : undefined,
-  });
+  private clientPromise: Promise<S3Client> | null = null;
+
+  // Credentials come from static keys when they are configured (any S3
+  // provider), otherwise from Vercel's OIDC federation, which is how the AWS
+  // marketplace integration grants access without long-lived secrets.
+  private client(): Promise<S3Client> {
+    if (!this.clientPromise) {
+      this.clientPromise = (async () => {
+        let credentials;
+        if (env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY) {
+          credentials = {
+            accessKeyId: env.S3_ACCESS_KEY_ID,
+            secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+          };
+        } else if (env.AWS_ROLE_ARN) {
+          const { awsCredentialsProvider } = await import('@vercel/functions/oidc');
+          credentials = awsCredentialsProvider({ roleArn: env.AWS_ROLE_ARN });
+        }
+        return new S3Client({
+          region: env.S3_REGION || env.AWS_REGION || 'us-east-1',
+          endpoint: env.S3_ENDPOINT || undefined,
+          forcePathStyle: env.S3_FORCE_PATH_STYLE,
+          credentials,
+        });
+      })();
+    }
+    return this.clientPromise;
+  }
 
   async put(key: string, body: Buffer, contentType: string) {
-    await this.client.send(
+    const client = await this.client();
+    await client.send(
       new PutObjectCommand({
-        Bucket: env.S3_BUCKET,
+        Bucket: s3Bucket,
         Key: key,
         Body: body,
         ContentType: contentType,
-        ServerSideEncryption: 'AES256',
       }),
     );
   }
 
   async get(key: string) {
-    const res = await this.client.send(new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
+    const client = await this.client();
+    const res = await client.send(new GetObjectCommand({ Bucket: s3Bucket, Key: key }));
     const chunks: Buffer[] = [];
     for await (const chunk of res.Body as AsyncIterable<Uint8Array>) chunks.push(Buffer.from(chunk));
     return Buffer.concat(chunks);
   }
 
   async delete(key: string) {
-    await this.client.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
+    const client = await this.client();
+    await client.send(new DeleteObjectCommand({ Bucket: s3Bucket, Key: key }));
   }
 }
 
 export const storage: StorageDriver =
-  env.STORAGE_DRIVER === 's3' && env.S3_BUCKET ? new S3Storage() : new LocalStorage();
+  env.STORAGE_DRIVER === 's3' && s3Bucket ? new S3Storage() : new LocalStorage();
 
 export const localStream = (key: string) => new LocalStorage().stream(key);
 

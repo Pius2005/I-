@@ -47,7 +47,12 @@ const schema = z.object({
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
   LOCAL_STORAGE_DIR: z.string().default('./uploads'),
   S3_BUCKET: z.string().optional().default(''),
+  // Vercel's AWS integration names the bucket S3_BUCKET_NAME and authenticates
+  // through OIDC federation instead of static keys.
+  S3_BUCKET_NAME: z.string().optional().default(''),
   S3_REGION: z.string().optional().default(''),
+  AWS_REGION: z.string().optional().default(''),
+  AWS_ROLE_ARN: z.string().optional().default(''),
   S3_ENDPOINT: z.string().optional().default(''),
   S3_ACCESS_KEY_ID: z.string().optional().default(''),
   S3_SECRET_ACCESS_KEY: z.string().optional().default(''),
@@ -100,3 +105,5 @@ export const env = parsed.data;
 export const isProd = env.NODE_ENV === 'production';
 export const isTest = env.NODE_ENV === 'test';
 export const corsOrigins = env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+
+export const s3Bucket = env.S3_BUCKET || env.S3_BUCKET_NAME;

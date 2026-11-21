@@ -1,0 +1,620 @@
+// Iṣẹ́ data model — PostgreSQL
+// Privacy note: demographic self-declarations live in their own table, encrypted
+// with AES-256-GCM and never joined by the scoring or recruiting queries.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CANDIDATE
+  RECRUITER
+  ADMIN
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  NYSC
+}
+
+enum DegreeClass {
+  FIRST
+  SECOND_UPPER
+  SECOND_LOWER
+  THIRD
+  PASS
+  NONE
+}
+
+enum CriterionKind {
+  MUST_HAVE
+  NICE_TO_HAVE
+}
+
+enum CriterionType {
+  SKILL
+  DEGREE_LEVEL
+  DEGREE_CLASS
+  FIELD_OF_STUDY
+  EXPERIENCE
+  CERTIFICATION
+  LANGUAGE
+}
+
+enum KnockoutType {
+  NYSC
+  DEGREE_CLASS
+  LOCATION
+  AVAILABILITY
+  WORK_AUTH
+}
+
+enum ApplicationStage {
+  APPLIED
+  SCREENED
+  SHORTLISTED
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+}
+
+enum ExtractionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ReviewStatus {
+  PARSED
+  CORRECTED
+  MANUAL_TEXT
+}
+
+enum NotificationType {
+  APPLICATION_RECEIVED
+  SCORED
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_CHANGED
+  INTERVIEW_CANCELLED
+  REMINDER_24H
+  REMINDER_1H
+  OUTCOME
+  BIAS_ALERT
+  SYSTEM
+}
+
+enum InterviewType {
+  IN_PERSON
+  PHONE
+  VIDEO
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum EmailTokenType {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+enum DataRequestType {
+  EXPORT
+  DELETE
+}
+
+enum DataRequestStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+}
+
+model Organisation {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  sector    String?
+  size      String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+  jobs  Job[]
+  biasReports BiasReport[]
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String
+  fullName       String
+  role           Role      @default(CANDIDATE)
+  phone          String?
+  organisationId String?
+  emailVerifiedAt DateTime?
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organisation      Organisation? @relation(fields: [organisationId], references: [id])
+  candidateProfile  CandidateProfile?
+  jobs              Job[] @relation("JobRecruiter")
+  applications      Application[] @relation("ApplicationCandidate")
+  refreshTokens     RefreshToken[]
+  emailTokens       EmailToken[]
+  notifications     Notification[]
+  notificationPref  NotificationPreference?
+  auditLogs         AuditLog[]
+  notes             Note[]
+  consentRecords    ConsentRecord[]
+  dataRequests      DataRequest[]
+  availability      AvailabilityWindow[]
+  demographic       DemographicDeclaration?
+  biasReports       BiasReport[]
+  counterfactualRuns CounterfactualRun[]
+
+  @@index([organisationId])
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  userAgent String?
+  ip        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailToken {
+  id        String         @id @default(cuid())
+  userId    String
+  type      EmailTokenType
+  tokenHash String         @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model CandidateProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  headline     String?
+  summary      String?
+  location     String?
+  phone        String?
+  linkedinUrl  String?
+  portfolioUrl String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id                  String         @id @default(cuid())
+  organisationId      String
+  recruiterId         String
+  title               String
+  slug                String         @unique
+  description         String
+  location            String
+  employmentType      EmploymentType @default(FULL_TIME)
+  deadline            DateTime
+  openings            Int            @default(1)
+  status              JobStatus      @default(DRAFT)
+  minYearsExperience  Int            @default(0)
+  blindScreening      Boolean        @default(true)
+  hideUniversityBlind Boolean        @default(true)
+  // Demo-only: enables a scoring rule that up-weights university type so the
+  // bias audit visibly flags the job. Guarded by ALLOW_BIAS_DEMO.
+  biasDemoMode        Boolean        @default(false)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  closedAt            DateTime?
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id])
+  recruiter       User         @relation("JobRecruiter", fields: [recruiterId], references: [id])
+  criteria        JobCriteria[]
+  knockoutQuestions KnockoutQuestion[]
+  applications    Application[]
+  availability    AvailabilityWindow[]
+  biasReports     BiasReport[]
+  counterfactualRuns CounterfactualRun[]
+  interviewSlots  InterviewSlot[]
+
+  @@index([organisationId, status])
+  @@index([recruiterId])
+  @@index([deadline])
+}
+
+model JobCriteria {
+  id      String        @id @default(cuid())
+  jobId   String
+  kind    CriterionKind
+  type    CriterionType
+  label   String
+  weight  Int
+  config  Json          @default("{}")
+  order   Int           @default(0)
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+}
+
+model KnockoutQuestion {
+  id       String       @id @default(cuid())
+  jobId    String
+  type     KnockoutType
+  prompt   String
+  options  Json         @default("[]")
+  config   Json         @default("{}")
+  order    Int          @default(0)
+
+  job     Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  answers KnockoutAnswer[]
+
+  @@index([jobId])
+}
+
+model Application {
+  id                  String           @id @default(cuid())
+  jobId               String
+  candidateId         String
+  publicRef           String           @unique
+  coverLetter         String?
+  stage               ApplicationStage @default(APPLIED)
+  knockoutPassed      Boolean          @default(true)
+  knockoutFlags       Json             @default("[]")
+  score               Int?
+  scoredAt            DateTime?
+  aiRecommendedStage  ApplicationStage?
+  identityRevealedAt  DateTime?
+  identityRevealedBy  String?
+  rejectionReason     String?
+  overrideReason      String?
+  shortlistedAt       DateTime?
+  humanReviewRequestedAt DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  job              Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate        User             @relation("ApplicationCandidate", fields: [candidateId], references: [id], onDelete: Cascade)
+  cvFile           CVFile?
+  parsedCV         ParsedCV?
+  scores           Score[]
+  knockoutAnswers  KnockoutAnswer[]
+  statusHistory    StatusHistory[]
+  notes            Note[]
+  interviews       Interview[]
+  interviewSlots   InterviewSlot[]
+
+  @@unique([jobId, candidateId])
+  @@index([jobId, stage])
+  @@index([candidateId])
+  @@index([score])
+}
+
+model CVFile {
+  id               String           @id @default(cuid())
+  applicationId    String?          @unique
+  candidateId      String
+  filename         String
+  mimeType         String
+  sizeBytes        Int
+  storageKey       String
+  checksum         String
+  extractionStatus ExtractionStatus @default(PENDING)
+  extractedText    String?
+  extractionError  String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+}
+
+model ParsedCV {
+  id            String       @id @default(cuid())
+  applicationId String       @unique
+  cvFileId      String?
+  data          Json
+  corrections   Json?
+  parserModel   String
+  promptVersion String
+  reviewStatus  ReviewStatus @default(PARSED)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Score {
+  id            String   @id @default(cuid())
+  applicationId String
+  total         Int
+  breakdown     Json
+  explanation   String
+  model         String
+  promptVersion String
+  rubricVersion String   @default("rubric-v1")
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([total])
+}
+
+model KnockoutAnswer {
+  id            String   @id @default(cuid())
+  applicationId String
+  questionId    String
+  value         Json
+  passed        Boolean
+  createdAt     DateTime @default(now())
+
+  application Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  question    KnockoutQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, questionId])
+}
+
+// Voluntary self-declaration. payload is AES-256-GCM ciphertext (JSON inside).
+// There is no relation usable from scoring code; only the audit service decrypts
+// aggregates through a dedicated repository function.
+model DemographicDeclaration {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  payload       String
+  keyVersion    Int      @default(1)
+  consentVersion String
+  declaredAt    DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StatusHistory {
+  id            String            @id @default(cuid())
+  applicationId String
+  fromStage     ApplicationStage?
+  toStage       ApplicationStage
+  actorId       String?
+  reason        String?
+  createdAt     DateTime          @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
+}
+
+model Note {
+  id            String   @id @default(cuid())
+  applicationId String
+  authorId      String
+  body          String
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id])
+
+  @@index([applicationId])
+}
+
+model AvailabilityWindow {
+  id             String        @id @default(cuid())
+  jobId          String
+  recruiterId    String
+  startsAt       DateTime
+  endsAt         DateTime
+  slotMinutes    Int           @default(30)
+  bufferMinutes  Int           @default(10)
+  timezone       String        @default("Africa/Lagos")
+  interviewType  InterviewType @default(VIDEO)
+  location       String?
+  createdAt      DateTime      @default(now())
+
+  job        Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  recruiter  User            @relation(fields: [recruiterId], references: [id])
+  slots      InterviewSlot[]
+
+  @@index([jobId, startsAt])
+}
+
+model InterviewSlot {
+  id            String   @id @default(cuid())
+  windowId      String
+  jobId         String
+  startsAt      DateTime
+  endsAt        DateTime
+  applicationId String?  @unique
+  createdAt     DateTime @default(now())
+
+  window      AvailabilityWindow @relation(fields: [windowId], references: [id], onDelete: Cascade)
+  job         Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  application Application?       @relation(fields: [applicationId], references: [id])
+  interview   Interview?
+
+  @@unique([windowId, startsAt])
+  @@index([jobId, startsAt])
+}
+
+model Interview {
+  id                String          @id @default(cuid())
+  slotId            String          @unique
+  applicationId     String
+  status            InterviewStatus @default(SCHEDULED)
+  type              InterviewType   @default(VIDEO)
+  location          String?
+  meetingLink       String?
+  notes             String?
+  interviewerIds    String[]
+  icsUid            String          @unique
+  reminder24SentAt  DateTime?
+  reminder1SentAt   DateTime?
+  googleEventId     String?
+  cancelledAt       DateTime?
+  cancelReason      String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  slot        InterviewSlot @relation(fields: [slotId], references: [id])
+  application Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  data      Json             @default("{}")
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  email     Boolean  @default(true)
+  sms       Boolean  @default(false)
+  whatsapp  Boolean  @default(false)
+  inApp     Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorRole  String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json     @default("{}")
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+model BiasReport {
+  id             String   @id @default(cuid())
+  jobId          String?
+  organisationId String?
+  generatedById  String
+  summary        Json
+  findings       Json
+  flagCount      Int      @default(0)
+  methodology    String
+  sampleSize     Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  job          Job?          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  organisation Organisation? @relation(fields: [organisationId], references: [id])
+  generatedBy  User          @relation(fields: [generatedById], references: [id])
+
+  @@index([jobId])
+  @@index([organisationId, createdAt])
+}
+
+model CounterfactualRun {
+  id          String   @id @default(cuid())
+  jobId       String
+  createdById String
+  baseCv      Json
+  variants    Json
+  results     Json
+  maxDelta    Int
+  threshold   Int
+  flagged     Boolean
+  createdAt   DateTime @default(now())
+
+  job       Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@index([jobId, createdAt])
+}
+
+model ConsentRecord {
+  id        String    @id @default(cuid())
+  userId    String
+  purpose   String
+  version   String
+  grantedAt DateTime  @default(now())
+  withdrawnAt DateTime?
+  ip        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+}
+
+model DataRequest {
+  id          String            @id @default(cuid())
+  userId      String
+  type        DataRequestType
+  status      DataRequestStatus @default(PENDING)
+  note        String?
+  requestedAt DateTime          @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

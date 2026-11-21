@@ -1,0 +1,79 @@
+name: ise
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ise}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ise_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ise}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - ise-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ise} -d ${POSTGRES_DB:-ise}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - ise-redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      APP_URL: ${APP_URL:-http://localhost:4000}
+      API_URL: ${API_URL:-http://localhost:4000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4000}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ise}:${POSTGRES_PASSWORD:-ise_password}@db:5432/${POSTGRES_DB:-ise}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in .env}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:?set FIELD_ENCRYPTION_KEY in .env}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+      REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-7}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      LOCAL_STORAGE_DIR: /app/server/uploads
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-console}
+      EMAIL_FROM: ${EMAIL_FROM:-Ise <no-reply@ise.example>}
+      SMS_PROVIDER: ${SMS_PROVIDER:-console}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      AUDIT_MIN_GROUP_SIZE: ${AUDIT_MIN_GROUP_SIZE:-5}
+      AUDIT_ADVERSE_IMPACT_THRESHOLD: ${AUDIT_ADVERSE_IMPACT_THRESHOLD:-0.8}
+      AUDIT_COUNTERFACTUAL_THRESHOLD: ${AUDIT_COUNTERFACTUAL_THRESHOLD:-5}
+      DATA_RETENTION_DAYS: ${DATA_RETENTION_DAYS:-365}
+    ports:
+      - '${PORT:-4000}:4000'
+    volumes:
+      - ise-uploads:/app/server/uploads
+
+volumes:
+  ise-db:
+  ise-redis:
+  ise-uploads:

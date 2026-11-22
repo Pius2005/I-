@@ -2,16 +2,16 @@ export function cn(...parts: (string | false | null | undefined)[]) {
   return parts.filter(Boolean).join(' ');
 }
 
-export function formatDate(value: string | Date | null | undefined, opts: Intl.DateTimeFormatOptions = {}) {
+export function formatDate(value: string | number | Date | null | undefined, opts: Intl.DateTimeFormatOptions = {}) {
   if (!value) return '—';
-  const date = typeof value === 'string' ? new Date(value) : value;
+  const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('en-NG', { dateStyle: 'medium', ...opts }).format(date);
 }
 
-export function formatDateTime(value: string | Date | null | undefined) {
+export function formatDateTime(value: string | number | Date | null | undefined) {
   if (!value) return '—';
-  const date = typeof value === 'string' ? new Date(value) : value;
+  const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('en-NG', {
     dateStyle: 'medium',
@@ -20,8 +20,8 @@ export function formatDateTime(value: string | Date | null | undefined) {
   }).format(date);
 }
 
-export function relativeTime(value: string | Date) {
-  const date = typeof value === 'string' ? new Date(value) : value;
+export function relativeTime(value: string | number | Date) {
+  const date = value instanceof Date ? value : new Date(value);
   const diff = date.getTime() - Date.now();
   const minutes = Math.round(diff / 60_000);
   const formatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });

@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Iṣẹ́ — AI CV screening with bias audit for Nigerian graduate hiring",
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "workspaces": [
     "server",
     "client"
@@ -18,11 +20,21 @@
     "db:seed": "npm run db:seed -w server",
     "db:embedded": "npm run db:embedded -w server",
     "test": "npm run test -w server",
-    "typecheck": "npm run typecheck -w server && npm run typecheck -w client"
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client && npm run typecheck:convex",
+    "build:web": "npm run build -w client",
+    "dev:web": "npm run dev -w client",
+    "convex:dev": "convex dev",
+    "convex:deploy": "convex deploy",
+    "seed:convex": "node scripts/seed-convex.mjs",
+    "typecheck:convex": "tsc -p tsconfig.convex.json"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "concurrently": "^9.1.0",
-    "vite": "^6.4.6"
+    "vite": "^6.4.6",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "convex": "^1.31.0"
   }
 }

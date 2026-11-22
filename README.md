@@ -6,8 +6,8 @@ Iṣẹ́ screens applications against job-specific, weighted criteria, explains
 
 AI is advisory only. Every stage change, rejection and identity reveal is a human action, requires a written reason where it departs from the recommendation, and is written to an immutable audit trail.
 
-- **Stack:** React 18 + Vite + TypeScript + Tailwind (client), Express + TypeScript + Prisma (server), PostgreSQL, Redis/BullMQ (optional).
-- **Hosting model:** one Node process serves `/api/*` and the built SPA.
+- **Stack:** React 18 + Vite + TypeScript + Tailwind (SPA), Convex for the database, functions, file storage and scheduled jobs.
+- **Hosting model:** the SPA is a static build (Vercel); all application logic runs in Convex.
 
 ---
 
@@ -48,78 +48,60 @@ AI is advisory only. Every stage change, rejection and identity reveal is a huma
 
 ---
 
-## Quick start with Docker
+## Running on Convex
 
-Requires Docker with Compose v2.
-
-```bash
-cp .env.example .env
-# Fill in JWT_ACCESS_SECRET, JWT_REFRESH_SECRET and FIELD_ENCRYPTION_KEY.
-node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-
-docker compose up --build -d
-docker compose exec api npx prisma migrate deploy --schema prisma/schema.prisma
-# Demo data: the image ships the compiled seed, and the seed refuses to run
-# under NODE_ENV=production, so pass development for this one command.
-docker compose exec -e NODE_ENV=development api npm run db:seed:dist --workspace @ise/server
-```
-
-Open <http://localhost:4000>. The API applies migrations on boot; seeding is a one-off command because the seed creates demo organisations, jobs and applications. The production image contains compiled JavaScript only, so use `db:seed:dist` there and `db:seed` (tsx, TypeScript sources) for local development.
-
-The compose file runs three services:
-
-| Service | Image | Purpose |
-| --- | --- | --- |
-| `db` | `postgres:16-alpine` | Primary datastore |
-| `redis` | `redis:7-alpine` | BullMQ CV-processing queue (fallback: in-process) |
-| `api` | built from `Dockerfile` | Express API + built SPA on port 4000 |
-
-Volumes: `ise-db` (database), `ise-redis` (queue persistence), `ise-uploads` (CV files when `STORAGE_DRIVER=local`).
-
-To promote a user to admin: `docker compose exec api npx prisma studio --schema prisma/schema.prisma`, or update the `role` column in SQL.
-
----
-
-## Local development without Docker
-
-Requires Node.js 20+ (22 recommended). A local PostgreSQL is needed; Redis is optional.
+There is no database to install and no API server to run: tables, functions, authentication and CV storage all live in [Convex](https://convex.dev).
 
 ```bash
 npm install
-cp .env.example .env          # set DATABASE_URL, JWT secrets, FIELD_ENCRYPTION_KEY
+
+# 1. Start the backend. The first run offers "Start without an account (run Convex locally)",
+#    which provisions a local deployment on http://127.0.0.1:3210 and writes
+#    CONVEX_DEPLOYMENT and VITE_CONVEX_URL to .env.local.
+npx convex dev
+
+# 2. Give the deployment the secrets it needs (in a second terminal).
+node -e "console.log(require(crypto).randomBytes(32).toString(hex))"   # SEED_TOKEN
+node -e "console.log(require(crypto).randomBytes(32).toString(hex))"   # APP_SECRET
+npx convex env set SEED_TOKEN <value>
+npx convex env set APP_SECRET <value>
+npx convex env set FIELD_ENCRYPTION_KEY <optional, 64 hex chars; falls back to APP_SECRET>
+npx convex env set APP_URL http://localhost:5174
+
+# 3. Load the demo world (150 candidates, 6 jobs, 300 scored applications, bias reports).
+CONVEX_URL=http://127.0.0.1:3210 SEED_TOKEN=<same value> npm run seed:convex
+
+# 4. Run the SPA.
+npm run dev:web
 ```
 
-### Option A — an existing PostgreSQL
+The SPA talks to Convex directly through `ConvexHttpClient`; it only needs `VITE_CONVEX_URL` (already in `.env.local` locally).
+
+### Deploying
 
 ```bash
-# .env
-DATABASE_URL=postgresql://ise:ise_password@localhost:5432/ise?schema=public
+npx convex deploy            # pushes schema + functions to the production deployment
 ```
 
-### Option B — bundled PostgreSQL (no Docker)
+Then set `VITE_CONVEX_URL` (the production `https://<deployment>.convex.cloud` URL) in the Vercel project, and set the same `SEED_TOKEN`, `APP_SECRET`, `FIELD_ENCRYPTION_KEY` and `APP_URL` variables on the production deployment with `npx convex env set --prod`. `vercel.json` builds only the SPA (`client/dist`).
 
-`npm run db:embedded` starts a real PostgreSQL 17 from the `embedded-postgres` binaries, on port **5433**, with user `ise`, password `ise_password` and database `ise`. Nothing else needs to be installed.
+### A note on the repository path
 
-```bash
-npm run db:embedded           # leave this terminal open
-# in a second terminal
-npm run db:migrate
-npm run db:seed
-npm run dev
-```
+The Convex CLI sends its working directory in a request header and fails with `Cannot convert argument to a ByteString` when the path contains non-ASCII characters — this repository is named `Iṣẹ́`. Run `npx convex dev` / `npx convex deploy` from a copy or junction of the project at an ASCII path (for example `C:devise`), then continue working in the real folder; generated types land in `convex/_generated` because the copy links back to it.
 
-Set `DATABASE_URL=postgresql://ise:ise_password@localhost:5433/ise?schema=public` to match.
+### What runs where
 
-**Why the temp directory?** Windows PostgreSQL binaries refuse to start when a path contains non-ASCII characters, and this repository is named `Iṣẹ́`. The launcher therefore mirrors the binaries and the data directory into `%TEMP%\ise-embedded-pg` and runs from there. Override the location with `EMBEDDED_PG_DIR`; change the port/database/credentials with `EMBEDDED_PG_PORT`, `EMBEDDED_PG_DB`, `EMBEDDED_PG_USER`, `EMBEDDED_PG_PASSWORD`.
+| Concern | Implementation |
+| --- | --- |
+| Data, sessions, audit log | `convex/schema.ts` (27 tables) |
+| Auth | bearer session tokens hashed with SHA-256 in `convex/auth.ts`; bcrypt hashes in Node actions |
+| CV parsing | `convex/extract.ts` (`pdf-parse` / `mammoth` in a Node action), scored by `shared/evaluate.ts` |
+| Encrypted demographics | AES-256-GCM in `convex/secure.ts`, readable only from `"use node"` functions |
+| CV files | Convex file storage (`convex/files.ts`) |
+| Scheduled reminders | `convex/crons.ts` → `convex/reminders.ts` |
+| Bias report PDF | generated in the browser with `pdf-lib` and DejaVu fonts (`client/src/lib/reportPdf.ts`) |
 
-### Running the two apps separately
-
-```bash
-npm run dev -w server                         # API on :4000
-npm run dev -w client                         # Vite on :5173 (proxies /api → :4000)
-```
-
-If port 5173 is taken, run `npx vite --port 5174 --strictPort` from `client/` **and** add that origin to `CORS_ORIGINS`, otherwise the API rejects browser requests with `Origin not allowed`.
+`server/` (Express + Prisma) is the previous backend. It is no longer built or deployed and is kept only for reference.
 
 ---
 
@@ -129,17 +111,13 @@ Run from the repository root.
 
 | Script | Description |
 | --- | --- |
-| `npm run dev` | API + client together (concurrently) |
-| `npm run build` | Compile the server and build the client |
-| `npm start` | Run the compiled API (`server/dist/src/index.js`) |
-| `npm run typecheck` | TypeScript check for both workspaces |
-| `npm test` | Server test suite (unit + end-to-end) |
-| `npm run db:generate` | Regenerate the Prisma client |
-| `npm run db:migrate` | Apply committed migrations (`prisma migrate deploy`) |
-| `npm run db:seed` | Load demo organisations, jobs, applications and users |
-| `npm run db:embedded` | Start the bundled PostgreSQL on port 5433 |
-
-`server/` also exposes `db:migrate:dev` and `db:push` for schema work.
+| `npm run convex:dev` | Push functions and watch the Convex deployment |
+| `npm run convex:deploy` | Deploy schema and functions to production |
+| `npm run seed:convex` | Load the demo world (needs `CONVEX_URL` and `SEED_TOKEN`) |
+| `npm run dev:web` | Vite dev server for the SPA |
+| `npm run build:web` | Production build of the SPA (`client/dist`) |
+| `npm run typecheck` | TypeScript check for the SPA and the Convex functions |
+| `npm run typecheck:convex` | TypeScript check for `convex/` and `shared/` |
 
 ---
 
@@ -152,42 +130,25 @@ All demo passwords are shown here because they are local fixtures; change them b
 | Admin | `admin@ise.test` | `Password123` |
 | Recruiter (Federal Tech) | `recruiter@federaltech.test` | `Password123` |
 | Recruiter (Lagos Fintech) | `hr@lagosfintech.test` | `Password123` |
-| Candidate | `candidate@ise.test` | `CandidatePass123` |
 
-The seed also creates ~150 candidate accounts, six jobs (one deliberately biased demo job guarded by `ALLOW_BIAS_DEMO`) and 200+ scored applications so the audit dashboards have meaningful samples. The seed is **not** idempotent for email uniqueness — run it against a fresh database.
+The seed also creates ~150 candidate accounts, six jobs (one deliberately biased demo job guarded by `ALLOW_BIAS_DEMO`) and 300 scored applications so the audit dashboards have meaningful samples. `npm run seed:convex` clears the demo tables first, so it can be re-run safely.
 
 ---
 
 ## Configuration
 
-Everything is read from the repository-root `.env` (`server/src/env.ts` validates it with Zod on boot). Start from `.env.example`.
+Deployment variables live in the Convex deployment, not in `.env` (that file only holds `VITE_CONVEX_URL` for the SPA and is written by `convex dev`). Set them with `npx convex env set NAME value` (add `--prod` for production).
 
-| Variable | Required | Default | Notes |
-| --- | --- | --- | --- |
-| `DATABASE_URL` | yes | — | PostgreSQL connection string |
-| `JWT_ACCESS_SECRET` | yes | dev fallback | ≥16 chars; use 64 hex |
-| `JWT_REFRESH_SECRET` | yes | dev fallback | different from the access secret |
-| `FIELD_ENCRYPTION_KEY` | recommended | empty | 32-byte hex for AES-256-GCM demographics; rotating it makes old records unreadable |
-| `PORT` | no | `4000` | Blank/`0` falls back to 4000 |
-| `APP_URL` / `API_URL` | no | localhost | Used in emails and links |
-| `CORS_ORIGINS` | no | localhost 5173/4000 | Comma-separated exact origins |
-| `ACCESS_TOKEN_TTL` | no | `15m` | |
-| `REFRESH_TOKEN_TTL_DAYS` | no | `7` | |
-| `BCRYPT_ROUNDS` | no | `12` | |
-| `STORAGE_DRIVER` | no | `local` | `local` or `s3` |
-| `LOCAL_STORAGE_DIR` | no | `./uploads` | Relative to `server/` |
-| `S3_*` | S3 only | — | Bucket, region, endpoint, keys, path-style |
-| `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | no | OpenAI-compatible | Empty key → deterministic rubric scorer |
-| `PROMPT_VERSION` | no | `2026-02-v1` | Stored on every score |
-| `EMAIL_PROVIDER` | no | `console` | `console`, `smtp`, `resend` |
-| `SMS_PROVIDER` | no | `console` | `console`, `termii` |
-| `REDIS_URL` | no | empty | Empty → in-process queue |
-| `GOOGLE_CALENDAR_*` | no | disabled | Optional calendar sync |
-| `AUDIT_MIN_GROUP_SIZE` | no | `5` | Groups below this are suppressed |
-| `AUDIT_ADVERSE_IMPACT_THRESHOLD` | no | `0.8` | Four-fifths rule |
-| `AUDIT_COUNTERFACTUAL_THRESHOLD` | no | `5` | Points of score change that flag |
-| `DATA_RETENTION_DAYS` | no | `365` | CV/file purge after closure |
-| `ALLOW_BIAS_DEMO` | no | `true` | Enables the seeded biased job |
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `SEED_TOKEN` | for demo data | Guard on every `convex/seed.ts` mutation; also required by `secure.seedDeclaration` |
+| `APP_SECRET` | yes | HMAC key for anonymous candidate references |
+| `FIELD_ENCRYPTION_KEY` | recommended | 64 hex chars for AES-256-GCM demographics; falls back to a hash of `APP_SECRET`. Rotating it makes old declarations unreadable |
+| `APP_URL` | no | Defaults to `http://localhost:5174`; used in notification and interview links |
+| `ALLOW_BIAS_DEMO` | no | `true` by default; set `false` to disable the seeded biased job |
+| `VITE_CONVEX_URL` | client | Deployment URL; written to `.env.local` by `convex dev`, set manually in Vercel |
+
+Audit thresholds (minimum group size, four-fifths threshold, counterfactual threshold, retention days) and the bias-demo switch are stored in the `settings` table and edited from the admin settings page; the environment variable above only sets the demo default.
 
 ### Graceful degradation
 

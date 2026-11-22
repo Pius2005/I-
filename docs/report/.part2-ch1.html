@@ -1,0 +1,162 @@
+<!-- LISTS -->
+<section class="page" id="p-lof">
+  <div class="chapter-label">Lists</div>
+  <h2>List of Figures</h2>
+  <div class="two-col" style="font-family:Arial,Helvetica,sans-serif;font-size:8.8pt;line-height:1.75">
+    <div>Figure 3.1 — Manual screening workflow</div>
+    <div>Figure 4.1 — System architecture</div>
+    <div>Figure 4.2 — Application-to-audit data flow</div>
+    <div>Figure 6.1 — Public landing page with live bias snapshot</div>
+    <div>Figure 6.2 — Sign-in page</div>
+    <div>Figure 6.3 — Public AI-use and fairness statement</div>
+    <div>Figure 6.4 — Administrator overview</div>
+    <div>Figure 6.5 — Administrator user directory</div>
+    <div>Figure 6.6 — Administrator system log</div>
+    <div>Figure 6.7 — Global bias audit view</div>
+    <div>Figure 6.8 — Recruiter dashboard</div>
+    <div>Figure 6.9 — Recruiter job list</div>
+    <div>Figure 6.10 — Blind pipeline with anonymous references</div>
+    <div>Figure 6.11 — Per-job bias audit with flags</div>
+    <div>Figure 6.12 — Recruiter application detail</div>
+    <div>Figure 6.13 — Candidate dashboard with explanations</div>
+    <div>Figure 6.14 — Candidate application list</div>
+  </div>
+
+  <h3 style="margin-top:8mm">List of Tables</h3>
+  <div class="two-col" style="font-family:Arial,Helvetica,sans-serif;font-size:8.8pt;line-height:1.75">
+    <div>Table 2.1 — Comparison of related systems</div>
+    <div>Table 2.2 — Backend platform comparison</div>
+    <div>Table 3.1 — Functional requirements</div>
+    <div>Table 3.2 — Non-functional requirements</div>
+    <div>Table 3.3 — Feasibility summary</div>
+    <div>Table 3.4 — Development tools</div>
+    <div>Table 4.1 — Data model summary</div>
+    <div>Table 4.2 — Route map</div>
+    <div>Table 5.1 — Environment variables</div>
+    <div>Table 6.1 — Seeded evaluation dataset</div>
+    <div>Table 6.2 — Test cases and outcomes</div>
+  </div>
+
+  <h3 style="margin-top:8mm">List of Abbreviations</h3>
+  <table style="font-size:8.5pt">
+    <tr><td style="width:20mm"><strong>AES</strong></td><td>Advanced Encryption Standard</td><td style="width:20mm"><strong>NDPA</strong></td><td>Nigeria Data Protection Act</td></tr>
+    <tr><td><strong>API</strong></td><td>Application Programming Interface</td><td><strong>NDPC</strong></td><td>Nigeria Data Protection Commission</td></tr>
+    <tr><td><strong>ATS</strong></td><td>Applicant Tracking System</td><td><strong>RBAC</strong></td><td>Role-Based Access Control</td></tr>
+    <tr><td><strong>CV</strong></td><td>Curriculum Vitae</td><td><strong>SHA</strong></td><td>Secure Hash Algorithm</td></tr>
+    <tr><td><strong>GCM</strong></td><td>Galois/Counter Mode</td><td><strong>SPA</strong></td><td>Single Page Application</td></tr>
+    <tr><td><strong>HMAC</strong></td><td>Hash-based Message Authentication Code</td><td><strong>SSR</strong></td><td>Server-Side Rendering</td></tr>
+    <tr><td><strong>HND</strong></td><td>Higher National Diploma</td><td><strong>UI</strong></td><td>User Interface</td></tr>
+    <tr><td><strong>LLM</strong></td><td>Large Language Model</td><td><strong>WCAG</strong></td><td>Web Content Accessibility Guidelines</td></tr>
+  </table>
+
+  <p class="small" style="margin-top:6mm">
+    Note on the diacritic: the platform name is written <strong>Iṣẹ́</strong> throughout, with the
+    dot below the s (U+1E63) and the acute accent on the e (U+1E17). The same characters are used in
+    the user interface, in the generated PDF reports and in this document.
+  </p>
+</section>
+
+<!-- CHAPTER 1 -->
+<section class="page" id="p-ch1">
+  <div class="chapter-label">Chapter One</div>
+  <h2>1&nbsp;&nbsp;Introduction</h2>
+
+  <h3>1.1 Background to the study</h3>
+  <p>
+    Nigerian graduate recruitment is a volume problem before it is anything else. A single entry-level
+    vacancy at a Lagos bank, a fintech or a federal agency routinely attracts several hundred
+    applications within a fortnight, and a two-person human resources team is expected to triage them
+    while the vacancy is still open. Under that pressure, screening collapses into a sort-by-institution
+    exercise: the federal university on the CV is ranked above the polytechnic, the “serious” degree
+    above the HND, and the familiar name above the unfamiliar one. These are not hiring criteria. They
+    are proxies for family background, geography and prior access to expensive education, and they
+    systematically distribute opportunity away from candidates who studied at state universities,
+    polytechnics and colleges of education.
+  </p>
+  <p>
+    Applicant tracking systems (ATS) were introduced to absorb this volume, and newer products add
+    keyword matching, ranking models or large language models (LLMs) on top. Each of these solves the
+    throughput problem and creates two new ones. The first is <em>opacity</em>: a recruiter who is told
+    that a candidate scored 63 out of 100 has no way to explain that number to the candidate, to a
+    hiring manager, or to a regulator. The second is <em>amplification</em>: a model trained or prompted
+    on historical hiring decisions learns the same institutional preferences that the manual process
+    encoded, and now applies them consistently, at scale, with the appearance of objectivity
+    (Barocas and Selbst, 2016; O'Neil, 2016).
+  </p>
+  <p>
+    Two developments make a different design possible. The first is legal. The Nigeria Data Protection
+    Act 2023 (NDPA) imposes lawful-basis, minimisation, storage-limitation and data-subject-rights
+    obligations on anyone processing personal data in Nigeria, and expressly frames automated
+    decision-making as something a data subject may contest. A recruitment system built after 2023 must
+    be able to answer, per candidate, what data was held, why it was held, and what a human being did
+    with it. The second is architectural. Managed serverless platforms now offer transactions, indexes,
+    file storage, scheduled jobs and server-side functions without a database administrator, which makes
+    it possible for a small team — or a single student project — to run a compliant, auditable backend
+    at effectively zero marginal cost.
+  </p>
+  <p>
+    Iṣẹ́ (Yoruba for “work”) is a response to both. It is a complete graduate recruitment platform in
+    which the scoring is deterministic and inspectable, identity is withheld from the reviewer until a
+    shortlist exists, voluntary demographic data is encrypted in a table that no scoring path reads,
+    and every decision — including every override — is written to an append-only audit log that feeds a
+    fairness report. The name is deliberate: the platform exists to make work reachable on the basis of
+    evidence rather than pedigree.
+  </p>
+</section>
+
+<section class="page" id="p-ch1-2">
+  <h3>1.2 Statement of the problem</h3>
+  <p>
+    Graduate screening in Nigeria currently fails on four measurable grounds, and no single existing
+    tool addresses all four at once.
+  </p>
+  <ul>
+    <li>
+      <strong>Volume without evidence.</strong> Hundreds of CVs are read in a few days, so recruiters
+      optimise for fast signals — institution type, degree classification, name — rather than the skills
+      and experience actually named in the advert.
+    </li>
+    <li>
+      <strong>Unaccountable decisions.</strong> Rejections are rarely recorded with a reason. When a
+      candidate asks why they were not shortlisted, there is usually nothing to consult; when a
+      regulator asks, there is nothing to produce.
+    </li>
+    <li>
+      <strong>Identity contamination.</strong> Names, gender, age, marital status and state of origin
+      are visible at the moment of screening, so the decision cannot be separated from them, and there
+      is no counterfactual evidence either way.
+    </li>
+    <li>
+      <strong>Unmeasured adverse impact.</strong> Nobody computes selection rates by group at each stage,
+      so a gap that would fail the four-fifths threshold in equality law can persist for years unnoticed.
+    </li>
+    <li>
+      <strong>Prohibitive running cost.</strong> The conventional stack for a system like this — an
+      application server, a managed PostgreSQL instance, object storage, a mail provider and a queue —
+      costs money every month whether or not anyone applies. For an institution, a research prototype or
+      a student project, that cost is often the reason the system is abandoned after the demonstration.
+    </li>
+  </ul>
+  <p>
+    The problem addressed here is therefore not merely “screen CVs faster”. It is to build a screening
+    system whose decisions can be explained to the candidate, justified to a hiring manager, audited for
+    adverse impact, and operated continuously at negligible cost.
+  </p>
+
+  <h3>1.3 Aim and objectives</h3>
+  <p>
+    The aim of this project is to design and implement a web-based graduate CV screening platform that
+    ranks candidates on job-related evidence, protects candidate identity during shortlisting, and
+    audits its own outcomes, while running entirely on a managed serverless backend.
+  </p>
+  <p>The specific objectives are to:</p>
+  <ol>
+    <li>design a data model that separates identity, evidence and voluntary demographic data into tables with different access paths;</li>
+    <li>implement deterministic, weighted scoring against recruiter-defined criteria with a written explanation for every score;</li>
+    <li>enforce blind screening by default, exposing candidates only through an HMAC-derived anonymous reference until an explicit, logged reveal;</li>
+    <li>implement an append-only audit trail covering authentication, scoring, stage changes, overrides and report generation;</li>
+    <li>implement a bias-audit engine that computes selection rates per stage, applies the four-fifths rule, suppresses small groups and runs counterfactual tests;</li>
+    <li>implement NDPA-aligned rights — consent records, encrypted demographic declarations, data export and erasure requests;</li>
+    <li>deploy the complete system on Convex and Vercel and evaluate it end to end with a realistic seeded dataset.</li>
+  </ol>
+</section>

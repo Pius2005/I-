@@ -1,0 +1,138 @@
+<section class="page" id="p-ch2-4">
+  <h3>2.4 Blind screening and explainable scoring</h3>
+  <p>
+    Blind recruitment removes identifying information from the material a reviewer sees. The evidence for
+    it is strongest in orchestral auditions, where the introduction of screens substantially increased the
+    proportion of women hired (Goldin and Rouse, 2000), and it underpins the “name-blind” recruitment
+    policies adopted by several large employers. The mechanism is straightforward: if the attribute is not
+    present, it cannot influence the judgement.
+  </p>
+  <p>
+    Blind review has two well-documented limits. The first is <em>leakage</em>: a CV can reveal identity
+    indirectly, through the university attended, a religious affiliation, an ethnic-sounding society, a
+    home address or the pattern of secondary schools. Removing the name while keeping the institution
+    leaves most of the signal intact in the Nigerian context. This implementation therefore removes the
+    institution name as well, unless the job deliberately enables the bias-demonstration rule, and it
+    reports institution type as a proxy feature in the audit. The second limit is <em>the reveal</em>:
+    once a candidate is shortlisted, identity returns, and so does the possibility of influence. The
+    platform makes the reveal an explicit, logged action performed by a named recruiter, so that the
+    moment identity enters the process is itself part of the record.
+  </p>
+  <p>
+    Explainability is treated here as a data-structure problem rather than a presentation problem.
+    Instead of producing a total and then attempting to rationalise it, the scorer builds the explanation
+    and the total from the same list of evaluated criteria: for each criterion it records whether it was
+    met, the weight awarded, the evidence found and the evidence expected. The total is the sum of the
+    awarded weights normalised to 100. A score is therefore always accompanied by the exact list of
+    criteria that produced it, and it is reproducible: the same CV parsed the same way against the same
+    rubric yields the same number, which is not true of a sampling-based model.
+  </p>
+  <p>
+    Two limitations follow from this choice and are stated rather than hidden. Deterministic rubric
+    matching cannot judge the quality of experience, only its presence and relevance, so a strong
+    candidate whose CV uses unexpected vocabulary can score low. And because the rubric is authored by the
+    recruiter, a badly weighted rubric produces a systematically bad ranking — which is precisely why the
+    audit reports override asymmetry and per-stage selection rates, so a mis-specified rubric becomes
+    visible in the outcome rather than remaining an invisible assumption.
+  </p>
+
+  <h3>2.5 Existing systems and their gaps</h3>
+  <table>
+    <tr><th style="width:34mm">Category</th><th>Typical capability</th><th style="width:52mm">Gap for this context</th></tr>
+    <tr>
+      <td>Enterprise ATS (Workday, Greenhouse, Lever)</td>
+      <td>Pipeline management, interview scheduling, reporting, integrations</td>
+      <td>Strong pipeline, weak on blinding and on local legal framing; per-seat pricing; no four-fifths audit out of the box</td>
+    </tr>
+    <tr>
+      <td>Keyword screeners and CV parsers</td>
+      <td>Extract fields, match keywords, rank by count</td>
+      <td>No explanation of a rank, no audit, no identity separation; keyword counts reward CV formatting</td>
+    </tr>
+    <tr>
+      <td>AI ranking add-ons</td>
+      <td>Semantic similarity or LLM scoring</td>
+      <td>Opaque and sampling-dependent; historically biased against name-signalled groups (Raghavan et al., 2020)</td>
+    </tr>
+    <tr>
+      <td>Fairness toolkits (AI Fairness 360, Fairlearn)</td>
+      <td>Metric computation over a supplied dataset</td>
+      <td>Libraries, not systems: no recruitment workflow, no consent, no audit log</td>
+    </tr>
+    <tr>
+      <td>Local job boards (Jobberman, MyJobMag)</td>
+      <td>Advertise vacancies, receive applications</td>
+      <td>Distribution, not screening; no scoring, no shortlisting workflow, no audit</td>
+    </tr>
+  </table>
+  <p class="listing-cap">Table 2.1 — Comparison of related systems</p>
+  <p>
+    The gap the project targets is the intersection: a screening workflow with the blinding and
+    auditability of a fairness toolkit, the pipeline ergonomics of an ATS, and the local legal framing of
+    an NDPA-aware product, at a cost that a department can sustain.
+  </p>
+</section>
+
+<section class="page" id="p-ch2-5">
+  <h3>2.6 Platform options and selection</h3>
+  <p>
+    Five realistic options were considered for the backend. The criteria were: transactionality for
+    pipeline changes, a queryable store with indexes, file storage for CVs, scheduled jobs for reminders
+    and retention, secure server-side secret handling, and total cost of ownership under intermittent load.
+  </p>
+  <table>
+    <tr>
+      <th style="width:26mm">Option</th><th>Fit</th><th style="width:52mm">Why it was not chosen</th>
+    </tr>
+    <tr>
+      <td>Express + Prisma + managed PostgreSQL (the original implementation)</td>
+      <td>Complete control, familiar relational modelling</td>
+      <td>Four separately billed components (compute, database, object storage, mail); a database instance is charged even when idle; the server must be operated and secured by hand</td>
+    </tr>
+    <tr>
+      <td>Firebase (Firestore + Auth + Storage)</td>
+      <td>Fast to start, strong client SDKs</td>
+      <td>Client-side security rules are the primary boundary; aggregate queries and multi-document transactions are awkward; vendor lock-in for auth</td>
+    </tr>
+    <tr>
+      <td>Supabase (Postgres + Auth + Storage)</td>
+      <td>Real SQL, generous free tier</td>
+      <td>Requires row-level security design and a separate function runtime; the free tier pauses inactive projects</td>
+    </tr>
+    <tr>
+      <td>Self-hosted Node on a small VPS</td>
+      <td>Cheapest predictable bill</td>
+      <td>Operating system patching, backups and TLS become the project's responsibility; single point of failure</td>
+    </tr>
+    <tr>
+      <td><strong>Convex</strong> (chosen)</td>
+      <td>Transactional document store, indexed queries, TypeScript functions with automatic end-to-end types, built-in file storage, scheduled and cron functions, per-deployment secrets, generous free tier</td>
+      <td>—</td>
+    </tr>
+  </table>
+  <p class="listing-cap">Table 2.2 — Backend platform comparison</p>
+  <p>
+    Convex was selected because the properties this project needs — serialisable mutations, indexed
+    queries, file storage with signed upload URLs, cron scheduling and server-held secrets — are all
+    first-class rather than assembled from separate services. Its function model also removes an entire
+    layer: there is no HTTP router to write, no ORM mapping and no separate validation schema, because the
+    arguments of each function are declared with Convex validators and the client receives the resulting
+    types. The trade-off accepted is vendor coupling: the functions are Convex-shaped, and moving them
+    would mean rewriting the data access layer, though the domain logic itself was deliberately kept in
+    framework-free modules under <span class="kbd">shared/</span> for exactly that reason.
+  </p>
+  <p>
+    The client remained a React single-page application built with Vite, deployed as static files. No
+    server-side rendering is used, so the entire hosting footprint is a CDN plus the Convex deployment.
+  </p>
+
+  <h3>2.7 Summary of the review</h3>
+  <p>
+    The literature supports three conclusions that shaped the implementation. Automated screening is
+    valuable for consistency but inherits and amplifies historical bias unless the proxy features are
+    removed and the outcome is measured. The four-fifths rule is a usable screening test provided its
+    small-sample instability is handled explicitly. And legal accountability, under the NDPA 2023, is
+    satisfied by records and boundaries rather than by statements of intent. The platform described in
+    the following chapters is an attempt to implement all three in one deployable system.
+  </p>
+</section>

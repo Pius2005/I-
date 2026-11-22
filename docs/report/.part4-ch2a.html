@@ -1,0 +1,141 @@
+<!-- CHAPTER 2 -->
+<section class="page" id="p-ch2">
+  <div class="chapter-label">Chapter Two</div>
+  <h2>2&nbsp;&nbsp;Literature Review and Background</h2>
+
+  <h3>2.1 Algorithmic screening in graduate recruitment</h3>
+  <p>
+    The argument for algorithmic screening is consistency. A human reviewer reading the two-hundredth CV
+    of the day applies a different standard from the one they applied to the first, and the difference is
+    not random — it tracks fatigue, time pressure and unconscious preference. A rule that is applied
+    identically to every document removes that variance, and a rule that records its inputs makes the
+    decision reviewable.
+  </p>
+  <p>
+    The argument against is that consistency without validity simply industrialises a bad criterion.
+    Barocas and Selbst (2016) show that data-mining tools built on historical decisions inherit the
+    discrimination present in those decisions, and that the inherited bias is hardest to see precisely
+    where the model is most accurate. O'Neil (2016) describes the same failure as the “weapon of math
+    destruction”: a proxy variable, convenient and measurable, displacing the construct the organisation
+    claims to care about. In hiring, the classic proxies are institution prestige, name, postal address
+    and gaps in employment history.
+  </p>
+  <p>
+    Raghavan et al. (2020) provide the most direct empirical warning for this project. Auditing a
+    widely used commercial resume-screening tool, they found that changing only candidate names produced
+    materially different rankings for otherwise identical CVs, with the effect concentrated on
+    candidates whose names signal particular demographic groups. The lesson is not that scoring should
+    be abandoned but that name-bearing inputs must be removed from the scorer, and that the removal must
+    be tested rather than assumed — which is why the audit engine in this project runs counterfactual
+    name swaps and reports the score delta rather than trusting the design intent.
+  </p>
+  <p>
+    A second strand of work concerns the <em>decision</em> rather than the score. High-volume screening
+    tends to collapse into a single number that recruits a shortlist automatically. The design position
+    adopted here follows the human-in-the-loop literature (Parasuraman, Sheridan and Wickens, 2000) and
+    the accountability requirements of the NDPA: the system may recommend, rank and explain, but a named
+    human must move a candidate forward or reject them, and the reason must be recorded.
+  </p>
+
+  <h3>2.2 Adverse impact and the four-fifths rule</h3>
+  <p>
+    Adverse impact is the statistical signature of a selection procedure that disadvantages a protected
+    group. The four-fifths rule, formalised in the United States <em>Uniform Guidelines on Employee
+    Selection Procedures</em> (EEOC, 1978), is the simplest screening test for it: the selection rate of
+    any group is divided by the selection rate of the group with the highest rate, and a ratio below 0.80
+    is treated as evidence requiring investigation.
+  </p>
+  <p>
+    The rule is a screening device, not a proof of discrimination, and it has well-known weaknesses: it
+    is unstable with small groups, it is sensitive to which stage of the process is measured, and it
+    compares groups rather than explaining any individual decision. Those weaknesses are addressed in this
+    implementation by suppressing groups smaller than five (Section 4.5), by computing rates per stage
+    rather than only for the final outcome, and by pairing the statistical result with a written
+    methodology note and an explicit statement that a flag is not a legal finding.
+  </p>
+</section>
+
+<section class="page" id="p-ch2-2">
+  <h3>2.2 Adverse impact and the four-fifths rule (continued)</h3>
+  <p>
+    The computation implemented in <span class="kbd">shared/domain.ts</span> follows the definition
+    directly. Selection rates are computed per group per stage, groups below the privacy threshold are
+    marked suppressed and excluded from the comparison, and the remaining rates are divided by the
+    highest rate to give an impact ratio. The threshold and severity bands are explicit:
+  </p>
+  <pre><code>export function selectionRates(observations: GroupObservation[], minGroupSize = 5): GroupStat[] {
+  const buckets = new Map&lt;string, { total: number; selected: number }&gt;();
+  for (const obs of observations) {
+    const key = obs.group || 'Not declared';
+    const bucket = buckets.get(key) ?? { total: 0, selected: 0 };
+    bucket.total += 1;
+    if (obs.selected) bucket.selected += 1;
+    buckets.set(key, bucket);
+  }
+  return [...buckets.entries()]
+    .map(([group, { total, selected }]) =&gt; ({
+      group,
+      total,
+      selected,
+      rate: total ? selected / total : 0,
+      suppressed: total &lt; minGroupSize,
+    }))
+    .sort((a, b) =&gt; b.rate - a.rate || b.total - a.total);
+}
+
+export function adverseImpact(groups: GroupStat[], threshold = 0.8): ImpactAnalysis {
+  const eligible = groups.filter((g) =&gt; !g.suppressed &amp;&amp; g.total &gt; 0);
+  if (eligible.length &lt; 2) {
+    return {
+      highestGroup: eligible[0]?.group ?? null,
+      highestRate: eligible[0]?.rate ?? 0,
+      groups: groups.map((g) =&gt; ({ ...g, ratio: 1, severity: 'none' as Severity, flagged: false })),
+      flagged: false,
+      summary: 'Not enough declared groups above the privacy threshold to run an adverse-impact test.',
+    };
+  }
+  const highest = eligible.reduce((best, g) =&gt; (g.rate &gt; best.rate ? g : best), eligible[0]);
+  const results: ImpactResult[] = groups.map((g) =&gt; {
+    const ratio = highest.rate &gt; 0 ? g.rate / highest.rate : 1;</code></pre>
+  <p class="listing-cap">Listing 2.1 — Selection rates and the four-fifths ratio (shared/domain.ts)</p>
+  <p>
+    Two implementation details matter for interpretation. First, a group with fewer than five members
+    keeps its row in the report but is excluded from the comparison, so a recruiter can see that data was
+    collected without being invited to draw a conclusion from three people. Second, when fewer than two
+    eligible groups exist the function returns an explicit “not enough data” summary instead of a
+    division by zero or a silent pass. On the seeded dataset this fires frequently and is reported
+    honestly: the deployed job audit states that 12 group rows fall below the five-person threshold.
+  </p>
+</section>
+
+<section class="page" id="p-ch2-3">
+  <h3>2.3 The Nigeria Data Protection Act 2023</h3>
+  <p>
+    The NDPA 2023 establishes the Nigeria Data Protection Commission and sets the framework for
+    processing personal data in Nigeria. For a recruitment system the operative obligations are these:
+  </p>
+  <ul>
+    <li><strong>Lawful basis and purpose limitation.</strong> Candidate data may be processed for the recruitment purpose it was collected for, and not silently reused for unrelated scoring or marketing;</li>
+    <li><strong>Data minimisation.</strong> Only data necessary for the purpose should be collected — which bears directly on the decision not to collect marital status or gender for screening;</li>
+    <li><strong>Storage limitation.</strong> Personal data must not be kept indefinitely; the platform records retention intent and exposes erasure requests;</li>
+    <li><strong>Data-subject rights.</strong> Access, correction, deletion and objection, including in relation to automated decisions;</li>
+    <li><strong>Security.</strong> Appropriate technical measures, including encryption and access control, proportionate to the data;</li>
+    <li><strong>Accountability.</strong> The controller must be able to demonstrate compliance, which in practice means records.</li>
+  </ul>
+  <p>
+    Translating those into design decisions produced five concrete mechanisms. Consent is recorded per
+    user with a versioned notice identifier and a timestamp. Demographic declarations are voluntary,
+    stored in a separate table and sealed with AES-256-GCM. Recruiters cannot read a candidate's
+    declaration; the audit engine aggregates it inside a Node runtime and returns only counts and rates.
+    A candidate can lodge an export or erasure request from their own profile, and the request appears in
+    the administrator's queue. Finally, the audit log records every access-relevant action with the actor,
+    so accountability is a query rather than an assertion.
+  </p>
+  <p>
+    The system is not, and does not claim to be, certified compliant. The privacy notice states that
+    legal compliance must be reviewed by a qualified Nigerian data-protection professional before
+    production use, and the audit page repeats that its statistical flags are indicators for human
+    investigation rather than legal findings. Both statements are visible in the deployed interface
+    (Figure 6.3).
+  </p>
+</section>

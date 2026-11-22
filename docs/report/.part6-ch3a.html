@@ -1,0 +1,79 @@
+<!-- CHAPTER 3 -->
+<section class="page" id="p-ch3">
+  <div class="chapter-label">Chapter Three</div>
+  <h2>3&nbsp;&nbsp;System Analysis and Requirements</h2>
+
+  <h3>3.1 The existing manual process</h3>
+  <p>
+    The process analysed is the one used by a typical Lagos employer hiring for a graduate role. It was
+    reconstructed from the workflow the earlier version of this system was built to replace, and it is
+    summarised below.
+  </p>
+  <div style="border:1px solid var(--rule);background:var(--tint);padding:4mm;font-family:Arial,Helvetica,sans-serif;font-size:8.6pt;line-height:1.9;margin:3mm 0">
+    <div><strong>1.</strong> Vacancy drafted in a document &rarr; posted to a job board and social media</div>
+    <div style="color:#615a52">&darr;</div>
+    <div><strong>2.</strong> Applications arrive as email attachments &rarr; saved into a shared folder</div>
+    <div style="color:#615a52">&darr;</div>
+    <div><strong>3.</strong> Recruiter opens each CV &rarr; reads name, school, class of degree first</div>
+    <div style="color:#615a52">&darr;</div>
+    <div><strong>4.</strong> Shortlist typed into a spreadsheet &rarr; informal ranking by “fit”</div>
+    <div style="color:#615a52">&darr;</div>
+    <div><strong>5.</strong> Invitations sent by email &rarr; replies tracked in the same mailbox</div>
+    <div style="color:#615a52">&darr;</div>
+    <div><strong>6.</strong> Interviews held &rarr; outcome recorded (sometimes) in the spreadsheet</div>
+    <div style="color:var(--muted)">&darr;</div>
+    <div><strong>7.</strong> Offer made &rarr; unsuccessful candidates usually not told why</div>
+  </div>
+  <p class="listing-cap">Figure 3.1 — Manual screening workflow</p>
+  <p>
+    Four failure modes follow from this workflow. The shared folder is not access-controlled per
+    organisation, so CVs accumulate indefinitely with no retention rule. The spreadsheet holds personal
+    data with no consent record and no lawful-basis note. The ranking is not reproducible — a second
+    recruiter would produce a different shortlist from the same CVs — and no reason is attached to any
+    rejection. Finally, nothing in the process can produce a selection rate by group, so adverse impact
+    is invisible even when it is severe.
+  </p>
+  <p>
+    The requirements below were derived from those failures, with each functional requirement traceable
+    to at least one of them.
+  </p>
+</section>
+
+<section class="page" id="p-ch3-2">
+  <h3>3.2 The proposed system</h3>
+  <p>
+    The proposed system replaces steps 2 to 7 with an authenticated platform. A candidate registers,
+    builds a profile, uploads a CV for a specific vacancy and answers that vacancy's knockout questions.
+    The CV is stored in Convex file storage, its text is extracted, and it is parsed into structured
+    facts. A deterministic rubric scores those facts against the vacancy's weighted criteria and produces
+    a total, a recommendation and a per-criterion explanation. The recruiter works a three-column board —
+    applied, screened, shortlisted — in which candidates appear only as anonymous references with their
+    score and education summary. Moving a candidate is a named human action with an optional reason, and
+    it is logged. Once shortlisted, a recruiter may reveal identity; interviews are booked from published
+    availability windows. The audit view recomputes selection rates for every stage from stored decisions
+    and demographic declarations, and a report can be generated and downloaded as a PDF.
+  </p>
+
+  <h3>3.3 Functional requirements</h3>
+  <table>
+    <tr><th style="width:16mm">ID</th><th style="width:52mm">Requirement</th><th>Description</th></tr>
+    <tr><td>FR1</td><td>Account management</td><td>Register as candidate or recruiter, verify email token, sign in, sign out, reset password; administrators can deactivate accounts</td></tr>
+    <tr><td>FR2</td><td>Role-based access</td><td>Candidate, recruiter and administrator roles; recruiter data scoped to their organisation; every server function checks the session and the scope</td></tr>
+    <tr><td>FR3</td><td>Job authoring</td><td>Create a vacancy with title, description, location, deadline, weighted criteria (must-have and nice-to-have) and knockout questions</td></tr>
+    <tr><td>FR4</td><td>Application</td><td>Apply with a PDF or DOCX CV up to 4 MB, answer knockout questions, accept the AI-use notice; duplicate applications to the same vacancy are prevented</td></tr>
+    <tr><td>FR5</td><td>CV storage and extraction</td><td>Upload to Convex file storage, extract text, record extraction status and failures, retain the original file for download</td></tr>
+    <tr><td>FR6</td><td>CV parsing</td><td>Derive name, contact, education (institution, type, degree level, class, years), experience, skills, certifications and languages from the extracted text</td></tr>
+    <tr><td>FR7</td><td>Scoring</td><td>Score against the rubric with weights, produce a 0–100 total, per-criterion met/missed flags, an AI recommendation and a stored model/prompt version</td></tr>
+    <tr><td>FR8</td><td>Blind pipeline</td><td>Show anonymous references only, with identity hidden until an explicit reveal; hide institution names in the board view</td></tr>
+    <tr><td>FR9</td><td>Stage management</td><td>Move an application through a defined stage machine, recording actor, reason and timestamp; support bulk movement and single-candidate override</td></tr>
+    <tr><td>FR10</td><td>Notes and comparison</td><td>Add internal notes; compare two or more shortlisted candidates side by side on the same rubric</td></tr>
+    <tr><td>FR11</td><td>Interviews</td><td>Publish availability windows, generate slots, allow a candidate to book or reschedule, record completion and outcome</td></tr>
+    <tr><td>FR12</td><td>Notifications</td><td>In-app notifications for stage changes, interview bookings, reminders and account events, with per-user unread state</td></tr>
+    <tr><td>FR13</td><td>Audit trail</td><td>Append-only log of authentication, scoring, stage changes, reveals, overrides, exports and report generation with actor and entity references</td></tr>
+    <tr><td>FR14</td><td>Bias audit</td><td>Selection rates per stage and group, four-fifths ratios with severity, proxy detection, counterfactual tests, override analysis and suggested fixes</td></tr>
+    <tr><td>FR15</td><td>Report export</td><td>Generate a PDF audit report client-side with methodology notes and sample-size warnings</td></tr>
+    <tr><td>FR16</td><td>Data-subject rights</td><td>Record consent with notice version, allow withdrawal, support export and erasure requests, and expose a queue to administrators</td></tr>
+    <tr><td>FR17</td><td>Administration</td><td>Organisation and user management, system settings, global audit view, data-request handling and system logs</td></tr>
+  </table>
+  <p class="listing-cap">Table 3.1 — Functional requirements</p>
+</section>

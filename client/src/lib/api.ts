@@ -52,22 +52,47 @@ function token(): string {
   return getToken() ?? '';
 }
 
-function parseError(error: unknown): never {
-  const raw = error instanceof Error ? error.message : String(error);
-  // ConvexError payloads arrive as a JSON string.
-  const start = raw.indexOf('{');
-  if (start !== -1) {
+interface ErrorPayload {
+  code?: string;
+  message?: string;
+  details?: unknown;
+}
+
+/**
+ * A `fail()` payload reaches the client on `ConvexError#data` (an object) while
+ * other server failures only carry `[Request ID: …] Server Error` in `message`,
+ * so look at both before giving up on a readable message.
+ */
+function errorPayload(error: unknown): ErrorPayload | null {
+  const candidates: unknown[] = [(error as { data?: unknown } | null)?.data, error instanceof Error ? error.message : String(error)];
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object') {
+      const payload = candidate as ErrorPayload;
+      if (payload.message) return payload;
+      continue;
+    }
+    if (typeof candidate !== 'string') continue;
+    // Some payloads arrive embedded in a longer string as JSON.
+    const start = candidate.indexOf('{');
+    if (start === -1) continue;
     try {
-      const parsed = JSON.parse(raw.slice(start)) as { code?: string; message?: string; details?: unknown };
-      if (parsed.message) {
-        const status =
-          parsed.code === 'UNAUTHORIZED' ? 401 : parsed.code === 'FORBIDDEN' ? 403 : parsed.code === 'NOT_FOUND' ? 404 : 400;
-        throw new ApiError(status, parsed.code ?? 'ERROR', parsed.message, parsed.details);
-      }
-    } catch (parseFailure) {
-      if (parseFailure instanceof ApiError) throw parseFailure;
+      const parsed = JSON.parse(candidate.slice(start)) as ErrorPayload;
+      if (parsed.message) return parsed;
+    } catch {
+      /* not JSON, keep looking */
     }
   }
+  return null;
+}
+
+function parseError(error: unknown): never {
+  const parsed = errorPayload(error);
+  if (parsed?.message) {
+    const status =
+      parsed.code === 'UNAUTHORIZED' ? 401 : parsed.code === 'FORBIDDEN' ? 403 : parsed.code === 'NOT_FOUND' ? 404 : 400;
+    throw new ApiError(status, parsed.code ?? 'ERROR', parsed.message, parsed.details);
+  }
+  const raw = error instanceof Error ? error.message : String(error);
   throw new ApiError(500, 'ERROR', raw || 'Something went wrong');
 }
 

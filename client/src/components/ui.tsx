@@ -179,22 +179,27 @@ export function Field({
   );
 }
 
-export function Checkbox({ label, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: ReactNode }) {
-  const id = useId();
-  return (
-    <div className="flex items-start gap-2.5">
-      <input
-        id={props.id ?? id}
-        type="checkbox"
-        className="mt-1 h-4 w-4 rounded border-line text-forest-600 focus:ring-forest-500"
-        {...props}
-      />
-      <label htmlFor={props.id ?? id} className="text-sm leading-relaxed text-ink/90">
-        {label}
-      </label>
-    </div>
-  );
-}
+// React Hook Form registers fields through a ref, so the checkbox must forward it too:
+// without the ref the field is never registered and its changes are dropped.
+export const Checkbox = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & { label: ReactNode }>(
+  function Checkbox({ label, ...props }, ref) {
+    const id = useId();
+    return (
+      <div className="flex items-start gap-2.5">
+        <input
+          ref={ref}
+          id={props.id ?? id}
+          type="checkbox"
+          className="mt-1 h-4 w-4 rounded border-line text-forest-600 focus:ring-forest-500"
+          {...props}
+        />
+        <label htmlFor={props.id ?? id} className="text-sm leading-relaxed text-ink/90">
+          {label}
+        </label>
+      </div>
+    );
+  },
+);
 
 export function Toggle({
   checked,
